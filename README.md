@@ -144,6 +144,23 @@ Connect via WebSocket to `ws://localhost:9400/ws/rpc` and send JSON-RPC 2.0 requ
 | `group_invite_link` | `group_id` | Get invite link |
 | `group_revoke_invite` | `group_id` | Revoke and regenerate invite link |
 
+### Channels (Newsletters)
+
+| Method | Parameters | Description |
+|--------|------------|-------------|
+| `newsletters` | `refresh` | List subscribed channels (cached 24h) |
+| `newsletter_info` | `jid` or `invite`, `refresh` | Get channel details |
+| `newsletter_create` | `name`, `description`, `picture` | Create a new channel |
+| `newsletter_follow` | `jid` | Subscribe to a channel |
+| `newsletter_unfollow` | `jid` | Unsubscribe from a channel |
+| `newsletter_mute` | `jid`, `mute` | Mute/unmute a channel |
+| `newsletter_messages` | `jid`, `count`, `before` | Get channel messages |
+| `newsletter_send` | `group_id`, `type`, `message`/`media_data` | Send to channel (admin only) |
+| `newsletter_mark_viewed` | `jid`, `server_ids[]` | Mark messages as viewed |
+| `newsletter_react` | `jid`, `server_id`, `reaction` | React to a channel message |
+| `newsletter_live_updates` | `jid` | Subscribe to live view/reaction updates |
+| `newsletter_stats` | `jid` or `invite`, `count` | Get channel statistics (views, reactions) |
+
 ### Chat History
 
 | Method | Parameters | Description |
@@ -179,6 +196,10 @@ The server pushes events as JSON-RPC notifications (no `id` field):
 | `event.message_sent` | Message sent successfully |
 | `event.message_received` | New message received (includes forwarding info) |
 | `event.history_sync_complete` | History sync completed after first login |
+| `event.newsletter_join` | Joined a channel |
+| `event.newsletter_leave` | Left a channel |
+| `event.newsletter_mute_change` | Channel mute state changed |
+| `event.newsletter_live_update` | Live view/reaction count updates |
 
 ### Message Received Event Fields
 
@@ -317,6 +338,59 @@ The server pushes events as JSON-RPC notifications (no `id` field):
     "max_messages_per_hour": 30,
     "simulate_typing": true,
     "randomize_delays": true
+  }
+}
+```
+
+### List Channels
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "method": "newsletters",
+  "params": {}
+}
+```
+
+### Get Channel Info by Invite Link
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "method": "newsletter_info",
+  "params": {
+    "invite": "https://whatsapp.com/channel/0029Va..."
+  }
+}
+```
+
+### Send Message to Channel
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "method": "newsletter_send",
+  "params": {
+    "group_id": "123456789@newsletter",
+    "type": "text",
+    "message": "Hello subscribers!"
+  }
+}
+```
+
+### Get Channel Statistics
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 11,
+  "method": "newsletter_stats",
+  "params": {
+    "jid": "123456789@newsletter",
+    "count": 20
   }
 }
 ```

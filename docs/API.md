@@ -293,6 +293,201 @@ Mark messages as read.
 
 ---
 
+### Channels (Newsletters)
+
+#### `newsletters`
+List subscribed channels (cached 24h).
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletters", "params": {}}
+```
+Use `"refresh": true` to force fetch from WhatsApp API.
+
+Response:
+```json
+[
+  {
+    "jid": "123456789@newsletter",
+    "name": "My Channel",
+    "description": "Channel description",
+    "subscriber_count": 1500,
+    "verification_state": "verified",
+    "state": "active",
+    "invite_link": "https://whatsapp.com/channel/0029Va...",
+    "role": "subscriber"
+  }
+]
+```
+
+#### `newsletter_info`
+Get channel details by JID or invite link.
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_info", "params": {
+  "invite": "https://whatsapp.com/channel/0029Va..."
+}}
+```
+Or by JID:
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_info", "params": {
+  "jid": "123456789@newsletter"
+}}
+```
+
+#### `newsletter_create`
+Create a new channel.
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_create", "params": {
+  "name": "My New Channel",
+  "description": "Channel description",
+  "picture": "BASE64_IMAGE_DATA"
+}}
+```
+
+#### `newsletter_follow`
+Subscribe to a channel.
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_follow", "params": {
+  "jid": "123456789@newsletter"
+}}
+```
+
+#### `newsletter_unfollow`
+Unsubscribe from a channel.
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_unfollow", "params": {
+  "jid": "123456789@newsletter"
+}}
+```
+
+#### `newsletter_mute`
+Mute or unmute a channel.
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_mute", "params": {
+  "jid": "123456789@newsletter",
+  "mute": true
+}}
+```
+
+#### `newsletter_messages`
+Get messages from a channel.
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_messages", "params": {
+  "jid": "123456789@newsletter",
+  "count": 10
+}}
+```
+Use `"before": SERVER_ID` for pagination.
+
+Response:
+```json
+[
+  {
+    "message_server_id": 42,
+    "message_id": "ABC123",
+    "type": "text",
+    "timestamp": 1706000000,
+    "views_count": 350,
+    "reaction_counts": {"👍": 12, "❤️": 5},
+    "text": "Hello subscribers!"
+  }
+]
+```
+
+#### `newsletter_send`
+Send a message to a channel (admin/owner only). Uses `group_id` for the newsletter JID.
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_send", "params": {
+  "group_id": "123456789@newsletter",
+  "type": "text",
+  "message": "Hello subscribers!"
+}}
+```
+
+Send image to channel:
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_send", "params": {
+  "group_id": "123456789@newsletter",
+  "type": "image",
+  "media_data": {
+    "data": "BASE64_IMAGE_DATA",
+    "mime_type": "image/jpeg",
+    "caption": "Check this out"
+  }
+}}
+```
+
+Supported types: `text`, `image`, `video`, `document`, `audio`
+
+#### `newsletter_mark_viewed`
+Mark channel messages as viewed.
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_mark_viewed", "params": {
+  "jid": "123456789@newsletter",
+  "server_ids": [42, 43, 44]
+}}
+```
+
+#### `newsletter_react`
+React to a channel message. Empty string removes reaction.
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_react", "params": {
+  "jid": "123456789@newsletter",
+  "server_id": 42,
+  "reaction": "👍"
+}}
+```
+
+#### `newsletter_live_updates`
+Subscribe to live view/reaction count updates for a channel.
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_live_updates", "params": {
+  "jid": "123456789@newsletter"
+}}
+```
+Response:
+```json
+{"message": "Subscribed", "duration_seconds": 300}
+```
+
+Updates arrive as `event.newsletter_live_update` events.
+
+#### `newsletter_stats`
+Get aggregated statistics for a channel. Always fetched fresh.
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_stats", "params": {
+  "jid": "123456789@newsletter",
+  "count": 20
+}}
+```
+Or by invite link:
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "newsletter_stats", "params": {
+  "invite": "https://whatsapp.com/channel/0029Va..."
+}}
+```
+Response:
+```json
+{
+  "jid": "123456789@newsletter",
+  "name": "My Channel",
+  "subscriber_count": 1500,
+  "state": "active",
+  "total_views": 7000,
+  "total_reactions": 340,
+  "avg_views_per_message": 350,
+  "avg_reactions_per_message": 17,
+  "message_count": 20,
+  "top_reactions": [
+    {"emoji": "👍", "count": 200},
+    {"emoji": "❤️", "count": 100}
+  ],
+  "messages": [
+    {"message_server_id": 42, "timestamp": 1706000000, "views_count": 350, "text": "Hello!"}
+  ]
+}
+```
+
+---
+
 ### Rate Limiting
 
 #### `rate_limit_get`
@@ -364,6 +559,39 @@ Server pushes events as JSON-RPC notifications (no `id` field):
   "to": "919876543210@s.whatsapp.net",
   "type": "text",
   "timestamp": "2025-01-15T10:30:00Z"
+}}
+```
+
+### `event.newsletter_join`
+```json
+{"jsonrpc": "2.0", "method": "event.newsletter_join", "params": {
+  "newsletter": {"jid": "123456789@newsletter", "name": "Channel Name", "subscriber_count": 500}
+}}
+```
+
+### `event.newsletter_leave`
+```json
+{"jsonrpc": "2.0", "method": "event.newsletter_leave", "params": {
+  "jid": "123456789@newsletter",
+  "role": "subscriber"
+}}
+```
+
+### `event.newsletter_mute_change`
+```json
+{"jsonrpc": "2.0", "method": "event.newsletter_mute_change", "params": {
+  "jid": "123456789@newsletter",
+  "mute": "on"
+}}
+```
+
+### `event.newsletter_live_update`
+```json
+{"jsonrpc": "2.0", "method": "event.newsletter_live_update", "params": {
+  "jid": "123456789@newsletter",
+  "messages": [
+    {"message_server_id": 42, "message_id": "ABC", "views_count": 355, "reaction_counts": {"👍": 13}}
+  ]
 }}
 ```
 

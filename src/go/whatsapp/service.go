@@ -22,6 +22,7 @@ import (
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
+	"google.golang.org/protobuf/proto"
 	_ "modernc.org/sqlite"
 
 	"whatsapp-rpc/src/go/config"
@@ -369,6 +370,57 @@ func (s *Service) eventHandler(evt interface{}) {
 		s.handleHistorySync(v)
 	case *events.Message:
 		s.handleIncomingMessage(v)
+	case *events.NewsletterJoin:
+		info := convertNewsletterMetadata(&v.NewsletterMetadata)
+		if s.historyStore != nil {
+			s.historyStore.StoreNewsletter(info)
+		}
+		s.safeEventSend(Event{
+			Type: "newsletter_join",
+			Data: map[string]interface{}{
+				"newsletter": info,
+			},
+			Time: time.Now(),
+		})
+	case *events.NewsletterLeave:
+		if s.historyStore != nil {
+			s.historyStore.DeleteNewsletter(v.ID.String())
+		}
+		s.safeEventSend(Event{
+			Type: "newsletter_leave",
+			Data: map[string]interface{}{
+				"jid":  v.ID.String(),
+				"role": string(v.Role),
+			},
+			Time: time.Now(),
+		})
+	case *events.NewsletterMuteChange:
+		s.safeEventSend(Event{
+			Type: "newsletter_mute_change",
+			Data: map[string]interface{}{
+				"jid":  v.ID.String(),
+				"mute": string(v.Mute),
+			},
+			Time: time.Now(),
+		})
+	case *events.NewsletterLiveUpdate:
+		msgs := make([]map[string]interface{}, 0, len(v.Messages))
+		for _, msg := range v.Messages {
+			msgs = append(msgs, map[string]interface{}{
+				"message_server_id": msg.MessageServerID,
+				"message_id":       string(msg.MessageID),
+				"views_count":      msg.ViewsCount,
+				"reaction_counts":  msg.ReactionCounts,
+			})
+		}
+		s.safeEventSend(Event{
+			Type: "newsletter_live_update",
+			Data: map[string]interface{}{
+				"jid":      v.JID.String(),
+				"messages": msgs,
+			},
+			Time: time.Now(),
+		})
 	default:
 		s.logger.Debugf("Unhandled event type: %T, data: %+v", evt, evt)
 	}
@@ -667,6 +719,14 @@ func (s *Service) handleIncomingMessage(v *events.Message) {
 				s.logger.Debugf("Failed to store message: %v", err)
 			}
 		}()
+	}
+
+	// Add newsletter metadata if present
+	if v.NewsletterMeta != nil {
+		eventData["newsletter_meta"] = map[string]interface{}{
+			"edit_ts":     v.NewsletterMeta.EditTS,
+			"original_ts": v.NewsletterMeta.OriginalTS,
+		}
 	}
 
 	// Broadcast event
@@ -2210,4 +2270,597 @@ func (s *Service) reinitClient() error {
 // ClearQRCode clears the cached QR code data
 func (s *Service) ClearQRCode() {
 	s.lastQRCode = nil
+}
+
+// ============================================================================
+// Newsletter (Channel) Methods
+// ============================================================================
+
+func convertNewsletterMetadata(meta *types.NewsletterMetadata) NewsletterInfo {
+	info := NewsletterInfo{
+		JID:               meta.ID.String(),
+		Name:              meta.ThreadMeta.Name.Text,
+		Description:       meta.ThreadMeta.Description.Text,
+		SubscriberCount:   meta.ThreadMeta.SubscriberCount,
+		VerificationState: string(meta.ThreadMeta.VerificationState),
+		State:             string(meta.State.Type),
+		InviteCode:        meta.ThreadMeta.InviteCode,
+		CreatedAt:         meta.ThreadMeta.CreationTime.Time.Unix(),
+	}
+	if meta.ThreadMeta.InviteCode != "" {
+		info.InviteLink = "https://whatsapp.com/channel/" + meta.ThreadMeta.InviteCode
+	}
+	if meta.ThreadMeta.Picture != nil {
+		info.PictureURL = meta.ThreadMeta.Picture.URL
+		info.PictureID = meta.ThreadMeta.Picture.ID
+	}
+	info.PreviewURL = meta.ThreadMeta.Preview.URL
+	if meta.ViewerMeta != nil {
+		info.Role = string(meta.ViewerMeta.Role)
+		info.Mute = string(meta.ViewerMeta.Mute)
+	}
+	return info
+}
+
+func convertNewsletterMessage(msg *types.NewsletterMessage) NewsletterMessageInfo {
+	info := NewsletterMessageInfo{
+		MessageServerID: int(msg.MessageServerID),
+		MessageID:       string(msg.MessageID),
+		Type:            msg.Type,
+		Timestamp:       msg.Timestamp.Unix(),
+		ViewsCount:      msg.ViewsCount,
+		ReactionCounts:  msg.ReactionCounts,
+	}
+	if msg.Message != nil {
+		if msg.Message.GetConversation() != "" {
+			info.Text = msg.Message.GetConversation()
+		} else if msg.Message.GetExtendedTextMessage() != nil {
+			info.Text = msg.Message.GetExtendedTextMessage().GetText()
+		} else if msg.Message.GetImageMessage() != nil {
+			info.Text = msg.Message.GetImageMessage().GetCaption()
+		} else if msg.Message.GetVideoMessage() != nil {
+			info.Text = msg.Message.GetVideoMessage().GetCaption()
+		}
+	}
+	return info
+}
+
+// GetNewsletters returns subscribed newsletters (cache-first)
+func (s *Service) GetNewsletters(refresh bool) ([]NewsletterInfo, error) {
+	if !s.client.IsConnected() {
+		return nil, fmt.Errorf("WhatsApp not connected")
+	}
+
+	// Try cache first
+	if !refresh && s.historyStore != nil {
+		if cached, err := s.historyStore.GetCachedNewsletters(); err == nil && len(cached) > 0 {
+			s.logger.Debugf("Returning %d newsletters from cache", len(cached))
+			return cached, nil
+		}
+	}
+
+	// Fetch from API
+	ctx := context.Background()
+	metas, err := s.client.GetSubscribedNewsletters(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get newsletters: %w", err)
+	}
+
+	newsletters := make([]NewsletterInfo, 0, len(metas))
+	for _, meta := range metas {
+		newsletters = append(newsletters, convertNewsletterMetadata(meta))
+	}
+
+	// Store in cache
+	if s.historyStore != nil {
+		if err := s.historyStore.StoreNewsletters(newsletters); err != nil {
+			s.logger.Warnf("Failed to cache newsletters: %v", err)
+		}
+	}
+
+	s.logger.Infof("Fetched %d newsletters from API", len(newsletters))
+	return newsletters, nil
+}
+
+// GetNewsletterInfo gets info for a single newsletter by JID or invite link
+func (s *Service) GetNewsletterInfo(jidOrInvite string, refresh bool) (*NewsletterInfo, error) {
+	if !s.client.IsConnected() {
+		return nil, fmt.Errorf("WhatsApp not connected")
+	}
+
+	isInvite := strings.Contains(jidOrInvite, "whatsapp.com/channel/") || !strings.Contains(jidOrInvite, "@")
+
+	// Try cache first (only for JID lookups)
+	if !refresh && !isInvite && s.historyStore != nil {
+		if cached, err := s.historyStore.GetCachedNewsletter(jidOrInvite); err == nil {
+			s.logger.Debugf("Returning newsletter %s from cache", jidOrInvite)
+			return cached, nil
+		}
+	}
+
+	ctx := context.Background()
+	var meta *types.NewsletterMetadata
+	var err error
+
+	if isInvite {
+		meta, err = s.client.GetNewsletterInfoWithInvite(ctx, jidOrInvite)
+	} else {
+		jid, parseErr := types.ParseJID(jidOrInvite)
+		if parseErr != nil {
+			return nil, fmt.Errorf("invalid JID: %w", parseErr)
+		}
+		meta, err = s.client.GetNewsletterInfo(ctx, jid)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get newsletter info: %w", err)
+	}
+	if meta == nil {
+		return nil, fmt.Errorf("newsletter not found")
+	}
+
+	info := convertNewsletterMetadata(meta)
+
+	// Store in cache
+	if s.historyStore != nil {
+		s.historyStore.StoreNewsletter(info)
+	}
+
+	return &info, nil
+}
+
+// CreateNewsletter creates a new WhatsApp channel
+func (s *Service) CreateNewsletter(req *CreateNewsletterRequest) (*NewsletterInfo, error) {
+	if !s.client.IsConnected() {
+		return nil, fmt.Errorf("WhatsApp not connected")
+	}
+
+	params := whatsmeow.CreateNewsletterParams{
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
+	if req.Picture != "" {
+		picBytes, err := base64.StdEncoding.DecodeString(req.Picture)
+		if err != nil {
+			return nil, fmt.Errorf("invalid base64 picture: %w", err)
+		}
+		params.Picture = picBytes
+	}
+
+	ctx := context.Background()
+	meta, err := s.client.CreateNewsletter(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create newsletter: %w", err)
+	}
+
+	info := convertNewsletterMetadata(meta)
+
+	if s.historyStore != nil {
+		s.historyStore.StoreNewsletter(info)
+	}
+
+	s.logger.Infof("Created newsletter: %s (%s)", info.Name, info.JID)
+	return &info, nil
+}
+
+// FollowNewsletter subscribes to a channel
+func (s *Service) FollowNewsletter(jidStr string) error {
+	if !s.client.IsConnected() {
+		return fmt.Errorf("WhatsApp not connected")
+	}
+
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return fmt.Errorf("invalid JID: %w", err)
+	}
+
+	ctx := context.Background()
+	if err := s.client.FollowNewsletter(ctx, jid); err != nil {
+		return fmt.Errorf("failed to follow newsletter: %w", err)
+	}
+
+	// Fetch info and cache it
+	meta, err := s.client.GetNewsletterInfo(ctx, jid)
+	if err == nil && meta != nil && s.historyStore != nil {
+		info := convertNewsletterMetadata(meta)
+		s.historyStore.StoreNewsletter(info)
+	}
+
+	s.logger.Infof("Followed newsletter: %s", jidStr)
+	return nil
+}
+
+// UnfollowNewsletter unsubscribes from a channel
+func (s *Service) UnfollowNewsletter(jidStr string) error {
+	if !s.client.IsConnected() {
+		return fmt.Errorf("WhatsApp not connected")
+	}
+
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return fmt.Errorf("invalid JID: %w", err)
+	}
+
+	ctx := context.Background()
+	if err := s.client.UnfollowNewsletter(ctx, jid); err != nil {
+		return fmt.Errorf("failed to unfollow newsletter: %w", err)
+	}
+
+	if s.historyStore != nil {
+		s.historyStore.DeleteNewsletter(jidStr)
+	}
+
+	s.logger.Infof("Unfollowed newsletter: %s", jidStr)
+	return nil
+}
+
+// NewsletterToggleMute mutes or unmutes a channel
+func (s *Service) NewsletterToggleMute(jidStr string, mute bool) error {
+	if !s.client.IsConnected() {
+		return fmt.Errorf("WhatsApp not connected")
+	}
+
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return fmt.Errorf("invalid JID: %w", err)
+	}
+
+	ctx := context.Background()
+	if err := s.client.NewsletterToggleMute(ctx, jid, mute); err != nil {
+		return fmt.Errorf("failed to toggle mute: %w", err)
+	}
+
+	s.logger.Infof("Newsletter %s mute set to %v", jidStr, mute)
+	return nil
+}
+
+// GetNewsletterMessages gets messages from a channel
+func (s *Service) GetNewsletterMessages(jidStr string, count int, before int) ([]NewsletterMessageInfo, error) {
+	if !s.client.IsConnected() {
+		return nil, fmt.Errorf("WhatsApp not connected")
+	}
+
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid JID: %w", err)
+	}
+
+	params := &whatsmeow.GetNewsletterMessagesParams{}
+	if count > 0 {
+		params.Count = count
+	}
+	if before > 0 {
+		params.Before = types.MessageServerID(before)
+	}
+
+	ctx := context.Background()
+	msgs, err := s.client.GetNewsletterMessages(ctx, jid, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get newsletter messages: %w", err)
+	}
+
+	results := make([]NewsletterMessageInfo, 0, len(msgs))
+	for _, msg := range msgs {
+		results = append(results, convertNewsletterMessage(msg))
+	}
+
+	return results, nil
+}
+
+// SendNewsletterMessage sends a message to a newsletter channel (admin only)
+func (s *Service) SendNewsletterMessage(jidStr string, req *MessageRequest) error {
+	if !s.client.IsConnected() {
+		return fmt.Errorf("WhatsApp not connected")
+	}
+
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return fmt.Errorf("invalid JID: %w", err)
+	}
+
+	if jid.Server != types.NewsletterServer {
+		return fmt.Errorf("target is not a newsletter JID")
+	}
+
+	// Rate limiting applies to newsletters
+	if err := s.CheckRateLimit(jidStr); err != nil {
+		return err
+	}
+
+	// Check for links for delay calculation
+	hasLinks := strings.Contains(req.Message, "http://") || strings.Contains(req.Message, "https://")
+	s.ApplyMessageDelay(hasLinks)
+
+	ctx := context.Background()
+	var message *waE2E.Message
+	var mediaHandle string
+
+	switch req.Type {
+	case "text", "":
+		message = &waE2E.Message{
+			Conversation: proto.String(req.Message),
+		}
+	case "image":
+		if req.MediaData == nil {
+			return fmt.Errorf("media_data is required for image messages")
+		}
+		mediaBytes, err := base64.StdEncoding.DecodeString(req.MediaData.Data)
+		if err != nil {
+			return fmt.Errorf("invalid base64 media data: %w", err)
+		}
+		uploaded, err := s.client.UploadNewsletter(ctx, mediaBytes, whatsmeow.MediaImage)
+		if err != nil {
+			return fmt.Errorf("failed to upload image: %w", err)
+		}
+		mediaHandle = uploaded.Handle
+		message = &waE2E.Message{
+			ImageMessage: &waE2E.ImageMessage{
+				Caption:    proto.String(req.MediaData.Caption),
+				Mimetype:   proto.String(req.MediaData.MimeType),
+				URL:        proto.String(uploaded.URL),
+				DirectPath: proto.String(uploaded.DirectPath),
+				FileSHA256: uploaded.FileSHA256,
+				FileLength: proto.Uint64(uploaded.FileLength),
+			},
+		}
+	case "video":
+		if req.MediaData == nil {
+			return fmt.Errorf("media_data is required for video messages")
+		}
+		mediaBytes, err := base64.StdEncoding.DecodeString(req.MediaData.Data)
+		if err != nil {
+			return fmt.Errorf("invalid base64 media data: %w", err)
+		}
+		uploaded, err := s.client.UploadNewsletter(ctx, mediaBytes, whatsmeow.MediaVideo)
+		if err != nil {
+			return fmt.Errorf("failed to upload video: %w", err)
+		}
+		mediaHandle = uploaded.Handle
+		message = &waE2E.Message{
+			VideoMessage: &waE2E.VideoMessage{
+				Caption:    proto.String(req.MediaData.Caption),
+				Mimetype:   proto.String(req.MediaData.MimeType),
+				URL:        proto.String(uploaded.URL),
+				DirectPath: proto.String(uploaded.DirectPath),
+				FileSHA256: uploaded.FileSHA256,
+				FileLength: proto.Uint64(uploaded.FileLength),
+			},
+		}
+	case "document":
+		if req.MediaData == nil {
+			return fmt.Errorf("media_data is required for document messages")
+		}
+		mediaBytes, err := base64.StdEncoding.DecodeString(req.MediaData.Data)
+		if err != nil {
+			return fmt.Errorf("invalid base64 media data: %w", err)
+		}
+		uploaded, err := s.client.UploadNewsletter(ctx, mediaBytes, whatsmeow.MediaDocument)
+		if err != nil {
+			return fmt.Errorf("failed to upload document: %w", err)
+		}
+		mediaHandle = uploaded.Handle
+		message = &waE2E.Message{
+			DocumentMessage: &waE2E.DocumentMessage{
+				Title:      proto.String(req.MediaData.Filename),
+				FileName:   proto.String(req.MediaData.Filename),
+				Mimetype:   proto.String(req.MediaData.MimeType),
+				URL:        proto.String(uploaded.URL),
+				DirectPath: proto.String(uploaded.DirectPath),
+				FileSHA256: uploaded.FileSHA256,
+				FileLength: proto.Uint64(uploaded.FileLength),
+			},
+		}
+	case "audio":
+		if req.MediaData == nil {
+			return fmt.Errorf("media_data is required for audio messages")
+		}
+		mediaBytes, err := base64.StdEncoding.DecodeString(req.MediaData.Data)
+		if err != nil {
+			return fmt.Errorf("invalid base64 media data: %w", err)
+		}
+		uploaded, err := s.client.UploadNewsletter(ctx, mediaBytes, whatsmeow.MediaAudio)
+		if err != nil {
+			return fmt.Errorf("failed to upload audio: %w", err)
+		}
+		mediaHandle = uploaded.Handle
+		message = &waE2E.Message{
+			AudioMessage: &waE2E.AudioMessage{
+				Mimetype:   proto.String(req.MediaData.MimeType),
+				URL:        proto.String(uploaded.URL),
+				DirectPath: proto.String(uploaded.DirectPath),
+				FileSHA256: uploaded.FileSHA256,
+				FileLength: proto.Uint64(uploaded.FileLength),
+			},
+		}
+	default:
+		return fmt.Errorf("unsupported message type for newsletters: %s", req.Type)
+	}
+
+	var resp whatsmeow.SendResponse
+	if mediaHandle != "" {
+		resp, err = s.client.SendMessage(ctx, jid, message, whatsmeow.SendRequestExtra{MediaHandle: mediaHandle})
+	} else {
+		resp, err = s.client.SendMessage(ctx, jid, message)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to send newsletter message: %w", err)
+	}
+
+	s.RecordMessageSent(jidStr)
+	s.logger.Infof("Newsletter message sent: %s to %s", resp.ID, jidStr)
+
+	s.safeEventSend(Event{
+		Type: "message_sent",
+		Data: map[string]interface{}{
+			"message_id": resp.ID,
+			"to":         jidStr,
+			"type":       req.Type,
+			"timestamp":  resp.Timestamp,
+		},
+		Time: time.Now(),
+	})
+
+	return nil
+}
+
+// NewsletterMarkViewed marks channel messages as viewed
+func (s *Service) NewsletterMarkViewed(jidStr string, serverIDs []int) error {
+	if !s.client.IsConnected() {
+		return fmt.Errorf("WhatsApp not connected")
+	}
+
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return fmt.Errorf("invalid JID: %w", err)
+	}
+
+	ids := make([]types.MessageServerID, len(serverIDs))
+	for i, id := range serverIDs {
+		ids[i] = types.MessageServerID(id)
+	}
+
+	ctx := context.Background()
+	if err := s.client.NewsletterMarkViewed(ctx, jid, ids); err != nil {
+		return fmt.Errorf("failed to mark viewed: %w", err)
+	}
+
+	return nil
+}
+
+// NewsletterSendReaction reacts to a channel message
+func (s *Service) NewsletterSendReaction(jidStr string, serverID int, reaction string) error {
+	if !s.client.IsConnected() {
+		return fmt.Errorf("WhatsApp not connected")
+	}
+
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return fmt.Errorf("invalid JID: %w", err)
+	}
+
+	ctx := context.Background()
+	if err := s.client.NewsletterSendReaction(ctx, jid, types.MessageServerID(serverID), reaction, ""); err != nil {
+		return fmt.Errorf("failed to send reaction: %w", err)
+	}
+
+	return nil
+}
+
+// NewsletterSubscribeLiveUpdates subscribes to live updates for a channel
+func (s *Service) NewsletterSubscribeLiveUpdates(jidStr string) (int, error) {
+	if !s.client.IsConnected() {
+		return 0, fmt.Errorf("WhatsApp not connected")
+	}
+
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return 0, fmt.Errorf("invalid JID: %w", err)
+	}
+
+	ctx := context.Background()
+	dur, err := s.client.NewsletterSubscribeLiveUpdates(ctx, jid)
+	if err != nil {
+		return 0, fmt.Errorf("failed to subscribe to live updates: %w", err)
+	}
+
+	return int(dur.Seconds()), nil
+}
+
+// GetNewsletterStats fetches and aggregates statistics for a channel
+func (s *Service) GetNewsletterStats(jidOrInvite string, messageCount int) (*NewsletterStats, error) {
+	if !s.client.IsConnected() {
+		return nil, fmt.Errorf("WhatsApp not connected")
+	}
+
+	if messageCount <= 0 {
+		messageCount = 20
+	}
+
+	ctx := context.Background()
+	isInvite := strings.Contains(jidOrInvite, "whatsapp.com/channel/") || !strings.Contains(jidOrInvite, "@")
+
+	// Fetch metadata
+	var meta *types.NewsletterMetadata
+	var err error
+	if isInvite {
+		meta, err = s.client.GetNewsletterInfoWithInvite(ctx, jidOrInvite)
+	} else {
+		jid, parseErr := types.ParseJID(jidOrInvite)
+		if parseErr != nil {
+			return nil, fmt.Errorf("invalid JID: %w", parseErr)
+		}
+		meta, err = s.client.GetNewsletterInfo(ctx, jid)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get newsletter info: %w", err)
+	}
+	if meta == nil {
+		return nil, fmt.Errorf("newsletter not found")
+	}
+
+	// Fetch recent messages
+	msgs, err := s.client.GetNewsletterMessages(ctx, meta.ID, &whatsmeow.GetNewsletterMessagesParams{
+		Count: messageCount,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get newsletter messages: %w", err)
+	}
+
+	// Aggregate stats
+	stats := &NewsletterStats{
+		JID:             meta.ID.String(),
+		Name:            meta.ThreadMeta.Name.Text,
+		SubscriberCount: meta.ThreadMeta.SubscriberCount,
+		State:           string(meta.State.Type),
+		MessageCount:    len(msgs),
+	}
+
+	reactionTotals := make(map[string]int)
+	for _, msg := range msgs {
+		stats.TotalViews += msg.ViewsCount
+		for emoji, count := range msg.ReactionCounts {
+			stats.TotalReactions += count
+			reactionTotals[emoji] += count
+		}
+
+		msgStat := NewsletterMessageStats{
+			MessageServerID: int(msg.MessageServerID),
+			Timestamp:       msg.Timestamp.Unix(),
+			ViewsCount:      msg.ViewsCount,
+			ReactionCounts:  msg.ReactionCounts,
+		}
+		if msg.Message != nil {
+			if msg.Message.GetConversation() != "" {
+				msgStat.Text = msg.Message.GetConversation()
+			} else if msg.Message.GetExtendedTextMessage() != nil {
+				msgStat.Text = msg.Message.GetExtendedTextMessage().GetText()
+			} else if msg.Message.GetImageMessage() != nil {
+				msgStat.Text = msg.Message.GetImageMessage().GetCaption()
+			} else if msg.Message.GetVideoMessage() != nil {
+				msgStat.Text = msg.Message.GetVideoMessage().GetCaption()
+			}
+		}
+		stats.Messages = append(stats.Messages, msgStat)
+	}
+
+	if len(msgs) > 0 {
+		stats.AvgViews = float64(stats.TotalViews) / float64(len(msgs))
+		stats.AvgReactions = float64(stats.TotalReactions) / float64(len(msgs))
+	}
+
+	// Sort top reactions by count (descending)
+	for emoji, count := range reactionTotals {
+		stats.TopReactions = append(stats.TopReactions, ReactionStat{Emoji: emoji, Count: count})
+	}
+	// Simple sort: bubble sort is fine for small slices
+	for i := 0; i < len(stats.TopReactions); i++ {
+		for j := i + 1; j < len(stats.TopReactions); j++ {
+			if stats.TopReactions[j].Count > stats.TopReactions[i].Count {
+				stats.TopReactions[i], stats.TopReactions[j] = stats.TopReactions[j], stats.TopReactions[i]
+			}
+		}
+	}
+
+	return stats, nil
 }

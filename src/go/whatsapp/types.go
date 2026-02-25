@@ -203,6 +203,72 @@ type GroupInviteLinkResult struct {
 	Revoked    bool   `json:"revoked,omitempty"`
 }
 
+// NewsletterInfo represents a WhatsApp Channel
+type NewsletterInfo struct {
+	JID               string `json:"jid"`
+	Name              string `json:"name"`
+	Description       string `json:"description,omitempty"`
+	SubscriberCount   int    `json:"subscriber_count"`
+	VerificationState string `json:"verification_state"`
+	State             string `json:"state"`
+	InviteCode        string `json:"invite_code,omitempty"`
+	InviteLink        string `json:"invite_link,omitempty"`
+	PictureURL        string `json:"picture_url,omitempty"`
+	PictureID         string `json:"picture_id,omitempty"`
+	PreviewURL        string `json:"preview_url,omitempty"`
+	Role              string `json:"role,omitempty"`
+	Mute              string `json:"mute,omitempty"`
+	CreatedAt         int64  `json:"created_at,omitempty"`
+}
+
+// NewsletterMessageInfo represents a message in a channel
+type NewsletterMessageInfo struct {
+	MessageServerID int            `json:"message_server_id"`
+	MessageID       string         `json:"message_id"`
+	Type            string         `json:"type"`
+	Timestamp       int64          `json:"timestamp"`
+	ViewsCount      int            `json:"views_count"`
+	ReactionCounts  map[string]int `json:"reaction_counts,omitempty"`
+	Text            string         `json:"text,omitempty"`
+}
+
+// CreateNewsletterRequest for creating a new channel
+type CreateNewsletterRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Picture     string `json:"picture,omitempty"`
+}
+
+// NewsletterStats represents aggregated statistics for a channel
+type NewsletterStats struct {
+	JID             string                   `json:"jid"`
+	Name            string                   `json:"name"`
+	SubscriberCount int                      `json:"subscriber_count"`
+	State           string                   `json:"state"`
+	TotalViews      int                      `json:"total_views"`
+	TotalReactions  int                      `json:"total_reactions"`
+	AvgViews        float64                  `json:"avg_views_per_message"`
+	AvgReactions    float64                  `json:"avg_reactions_per_message"`
+	MessageCount    int                      `json:"message_count"`
+	TopReactions    []ReactionStat           `json:"top_reactions"`
+	Messages        []NewsletterMessageStats `json:"messages"`
+}
+
+// ReactionStat represents a reaction emoji and its total count
+type ReactionStat struct {
+	Emoji string `json:"emoji"`
+	Count int    `json:"count"`
+}
+
+// NewsletterMessageStats represents per-message stats
+type NewsletterMessageStats struct {
+	MessageServerID int            `json:"message_server_id"`
+	Timestamp       int64          `json:"timestamp"`
+	ViewsCount      int            `json:"views_count"`
+	ReactionCounts  map[string]int `json:"reaction_counts,omitempty"`
+	Text            string         `json:"text,omitempty"`
+}
+
 // RateLimitConfig represents configurable rate limiting settings for anti-ban protection
 type RateLimitConfig struct {
 	Enabled bool `json:"enabled"`

@@ -49,6 +49,12 @@ async def main():
     # Get chat history
     history = await client.chat_history(phone="1234567890", limit=50)
 
+    # List subscribed channels
+    channels = await client.newsletters()
+
+    # Get channel stats
+    stats = await client.newsletter_stats(jid="123456789@newsletter", count=20)
+
     await client.close()
 
 asyncio.run(main())
@@ -90,6 +96,18 @@ async def main():
 | `presence(status)` | Set online/offline |
 | `mark_read(message_ids, chat_jid)` | Mark messages as read |
 | `rate_limit_get()` / `rate_limit_set(**config)` | Rate limiting config |
+| `newsletters(refresh)` | List subscribed channels |
+| `newsletter_info(jid, invite, refresh)` | Get channel details |
+| `newsletter_create(name, description, picture)` | Create a channel |
+| `newsletter_follow(jid)` | Subscribe to a channel |
+| `newsletter_unfollow(jid)` | Unsubscribe from a channel |
+| `newsletter_mute(jid, mute)` | Mute/unmute a channel |
+| `newsletter_messages(jid, count, before)` | Get channel messages |
+| `newsletter_send(group_id, type, message, media_data)` | Send to channel (admin only) |
+| `newsletter_mark_viewed(jid, server_ids)` | Mark messages as viewed |
+| `newsletter_react(jid, server_id, reaction)` | React to a channel message |
+| `newsletter_live_updates(jid)` | Subscribe to live updates |
+| `newsletter_stats(jid, invite, count)` | Get channel statistics |
 
 ## License
 

@@ -803,6 +803,335 @@
         "name": "ChatHistoryResult",
         "schema": { "$ref": "#/components/schemas/ChatHistoryResult" }
       }
+    },
+    {
+      "name": "newsletters",
+      "summary": "List subscribed WhatsApp channels",
+      "description": "Returns all channels the user is subscribed to. Results are cached for 24 hours; use refresh: true to force a fresh fetch from the WhatsApp API.",
+      "params": [
+        {
+          "name": "refresh",
+          "description": "Force refresh from WhatsApp API instead of cache",
+          "schema": { "type": "boolean" },
+          "required": false
+        }
+      ],
+      "result": {
+        "name": "NewslettersResult",
+        "schema": {
+          "type": "array",
+          "items": { "$ref": "#/components/schemas/NewsletterInfo" }
+        }
+      }
+    },
+    {
+      "name": "newsletter_info",
+      "summary": "Get channel details by JID or invite link",
+      "description": "Fetches detailed information about a single channel. Accepts either a newsletter JID or an invite link/code. Cached results returned unless refresh is true.",
+      "params": [
+        {
+          "name": "jid",
+          "description": "Newsletter JID (e.g., 123456789@newsletter)",
+          "schema": { "type": "string" },
+          "required": false
+        },
+        {
+          "name": "invite",
+          "description": "Invite link or code (e.g., https://whatsapp.com/channel/...)",
+          "schema": { "type": "string" },
+          "required": false
+        },
+        {
+          "name": "refresh",
+          "description": "Force refresh from WhatsApp API instead of cache",
+          "schema": { "type": "boolean" },
+          "required": false
+        }
+      ],
+      "result": {
+        "name": "NewsletterInfoResult",
+        "schema": { "$ref": "#/components/schemas/NewsletterInfo" }
+      }
+    },
+    {
+      "name": "newsletter_create",
+      "summary": "Create a new WhatsApp channel",
+      "params": [
+        {
+          "name": "name",
+          "description": "Channel name",
+          "schema": { "type": "string" },
+          "required": true
+        },
+        {
+          "name": "description",
+          "description": "Channel description",
+          "schema": { "type": "string" },
+          "required": false
+        },
+        {
+          "name": "picture",
+          "description": "Base64-encoded channel picture",
+          "schema": { "type": "string" },
+          "required": false
+        }
+      ],
+      "result": {
+        "name": "NewsletterCreateResult",
+        "schema": { "$ref": "#/components/schemas/NewsletterInfo" }
+      }
+    },
+    {
+      "name": "newsletter_follow",
+      "summary": "Subscribe to a channel",
+      "params": [
+        {
+          "name": "jid",
+          "description": "Newsletter JID to follow",
+          "schema": { "type": "string" },
+          "required": true
+        }
+      ],
+      "result": {
+        "name": "NewsletterFollowResult",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "message": { "type": "string", "enum": ["Followed"] }
+          }
+        }
+      }
+    },
+    {
+      "name": "newsletter_unfollow",
+      "summary": "Unsubscribe from a channel",
+      "params": [
+        {
+          "name": "jid",
+          "description": "Newsletter JID to unfollow",
+          "schema": { "type": "string" },
+          "required": true
+        }
+      ],
+      "result": {
+        "name": "NewsletterUnfollowResult",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "message": { "type": "string", "enum": ["Unfollowed"] }
+          }
+        }
+      }
+    },
+    {
+      "name": "newsletter_mute",
+      "summary": "Mute or unmute a channel",
+      "params": [
+        {
+          "name": "jid",
+          "description": "Newsletter JID",
+          "schema": { "type": "string" },
+          "required": true
+        },
+        {
+          "name": "mute",
+          "description": "True to mute, false to unmute",
+          "schema": { "type": "boolean" },
+          "required": true
+        }
+      ],
+      "result": {
+        "name": "NewsletterMuteResult",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "message": { "type": "string" },
+            "mute": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    {
+      "name": "newsletter_messages",
+      "summary": "Get messages from a channel",
+      "params": [
+        {
+          "name": "jid",
+          "description": "Newsletter JID",
+          "schema": { "type": "string" },
+          "required": true
+        },
+        {
+          "name": "count",
+          "description": "Number of messages to fetch",
+          "schema": { "type": "integer" },
+          "required": false
+        },
+        {
+          "name": "before",
+          "description": "Fetch messages before this server ID (for pagination)",
+          "schema": { "type": "integer" },
+          "required": false
+        }
+      ],
+      "result": {
+        "name": "NewsletterMessagesResult",
+        "schema": {
+          "type": "array",
+          "items": { "$ref": "#/components/schemas/NewsletterMessageInfo" }
+        }
+      }
+    },
+    {
+      "name": "newsletter_send",
+      "summary": "Send a message to a channel (admin only)",
+      "description": "Sends a text or media message to a newsletter channel. Only channel admins/owners can send. Uses group_id field for the newsletter JID. Media is uploaded unencrypted via newsletter-specific upload.",
+      "params": [
+        {
+          "name": "group_id",
+          "description": "Newsletter JID (e.g., 123456789@newsletter)",
+          "schema": { "type": "string" },
+          "required": true
+        },
+        {
+          "name": "type",
+          "description": "Message type: text, image, video, document, audio",
+          "schema": { "type": "string", "enum": ["text", "image", "video", "document", "audio"] },
+          "required": true
+        },
+        {
+          "name": "message",
+          "description": "Text content (for text messages)",
+          "schema": { "type": "string" },
+          "required": false
+        },
+        {
+          "name": "media_data",
+          "description": "Media content (for image/video/document/audio)",
+          "schema": { "$ref": "#/components/schemas/MediaData" },
+          "required": false
+        }
+      ],
+      "result": {
+        "name": "NewsletterSendResult",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "message": { "type": "string", "enum": ["Sent"] }
+          }
+        }
+      }
+    },
+    {
+      "name": "newsletter_mark_viewed",
+      "summary": "Mark channel messages as viewed",
+      "params": [
+        {
+          "name": "jid",
+          "description": "Newsletter JID",
+          "schema": { "type": "string" },
+          "required": true
+        },
+        {
+          "name": "server_ids",
+          "description": "Array of message server IDs to mark as viewed",
+          "schema": { "type": "array", "items": { "type": "integer" } },
+          "required": true
+        }
+      ],
+      "result": {
+        "name": "NewsletterMarkViewedResult",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "message": { "type": "string", "enum": ["Marked as viewed"] }
+          }
+        }
+      }
+    },
+    {
+      "name": "newsletter_react",
+      "summary": "React to a channel message",
+      "params": [
+        {
+          "name": "jid",
+          "description": "Newsletter JID",
+          "schema": { "type": "string" },
+          "required": true
+        },
+        {
+          "name": "server_id",
+          "description": "Message server ID to react to",
+          "schema": { "type": "integer" },
+          "required": true
+        },
+        {
+          "name": "reaction",
+          "description": "Reaction emoji (empty string to remove reaction)",
+          "schema": { "type": "string" },
+          "required": true
+        }
+      ],
+      "result": {
+        "name": "NewsletterReactResult",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "message": { "type": "string", "enum": ["Reaction sent"] }
+          }
+        }
+      }
+    },
+    {
+      "name": "newsletter_live_updates",
+      "summary": "Subscribe to live updates for a channel (views/reactions)",
+      "params": [
+        {
+          "name": "jid",
+          "description": "Newsletter JID",
+          "schema": { "type": "string" },
+          "required": true
+        }
+      ],
+      "result": {
+        "name": "NewsletterLiveUpdatesResult",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "message": { "type": "string", "enum": ["Subscribed"] },
+            "duration_seconds": { "type": "integer", "description": "Duration of subscription in seconds" }
+          }
+        }
+      }
+    },
+    {
+      "name": "newsletter_stats",
+      "summary": "Get channel statistics (views, reactions, aggregates)",
+      "description": "Fetches channel metadata and recent messages, then aggregates statistics including total views, total reactions, averages per message, and top reactions. Always fetched fresh (not cached).",
+      "params": [
+        {
+          "name": "jid",
+          "description": "Newsletter JID",
+          "schema": { "type": "string" },
+          "required": false
+        },
+        {
+          "name": "invite",
+          "description": "Invite link or code for public channels",
+          "schema": { "type": "string" },
+          "required": false
+        },
+        {
+          "name": "count",
+          "description": "Number of recent messages to analyze (default: 20)",
+          "schema": { "type": "integer", "default": 20 },
+          "required": false
+        }
+      ],
+      "result": {
+        "name": "NewsletterStatsResult",
+        "schema": { "$ref": "#/components/schemas/NewsletterStats" }
+      }
     }
   ],
   "components": {
@@ -950,6 +1279,91 @@
           "revoked": { "type": "boolean", "description": "Whether old link was revoked" }
         },
         "required": ["group_id", "invite_link"]
+      },
+      "NewsletterInfo": {
+        "type": "object",
+        "description": "WhatsApp Channel (newsletter) information",
+        "properties": {
+          "jid": { "type": "string", "description": "Newsletter JID (e.g., 123456789@newsletter)" },
+          "name": { "type": "string", "description": "Channel name" },
+          "description": { "type": "string", "description": "Channel description" },
+          "subscriber_count": { "type": "integer", "description": "Number of subscribers" },
+          "verification_state": { "type": "string", "description": "Verification state (verified/unverified)" },
+          "state": { "type": "string", "description": "Channel state (active/suspended/geosuspended)" },
+          "invite_code": { "type": "string", "description": "Invite code" },
+          "invite_link": { "type": "string", "description": "Full invite link (https://whatsapp.com/channel/...)" },
+          "picture_url": { "type": "string", "description": "Channel picture URL" },
+          "picture_id": { "type": "string", "description": "Picture identifier" },
+          "preview_url": { "type": "string", "description": "Preview image URL" },
+          "role": { "type": "string", "description": "Viewer role (subscriber/guest/admin/owner)" },
+          "mute": { "type": "string", "description": "Mute state (on/off)" },
+          "created_at": { "type": "integer", "description": "Unix timestamp of creation" }
+        },
+        "required": ["jid", "name", "subscriber_count", "verification_state", "state"]
+      },
+      "NewsletterMessageInfo": {
+        "type": "object",
+        "description": "A message in a WhatsApp channel",
+        "properties": {
+          "message_server_id": { "type": "integer", "description": "Server-assigned message ID" },
+          "message_id": { "type": "string", "description": "Message ID" },
+          "type": { "type": "string", "description": "Message type" },
+          "timestamp": { "type": "integer", "description": "Unix timestamp" },
+          "views_count": { "type": "integer", "description": "Number of views" },
+          "reaction_counts": {
+            "type": "object",
+            "description": "Map of emoji to reaction count",
+            "additionalProperties": { "type": "integer" }
+          },
+          "text": { "type": "string", "description": "Text content or caption" }
+        },
+        "required": ["message_server_id", "message_id", "type", "timestamp", "views_count"]
+      },
+      "NewsletterStats": {
+        "type": "object",
+        "description": "Aggregated statistics for a WhatsApp channel",
+        "properties": {
+          "jid": { "type": "string", "description": "Newsletter JID" },
+          "name": { "type": "string", "description": "Channel name" },
+          "subscriber_count": { "type": "integer", "description": "Number of subscribers" },
+          "state": { "type": "string", "description": "Channel state" },
+          "total_views": { "type": "integer", "description": "Total views across analyzed messages" },
+          "total_reactions": { "type": "integer", "description": "Total reactions across analyzed messages" },
+          "avg_views_per_message": { "type": "number", "description": "Average views per message" },
+          "avg_reactions_per_message": { "type": "number", "description": "Average reactions per message" },
+          "message_count": { "type": "integer", "description": "Number of messages analyzed" },
+          "top_reactions": {
+            "type": "array",
+            "description": "Top reactions sorted by count (descending)",
+            "items": {
+              "type": "object",
+              "properties": {
+                "emoji": { "type": "string" },
+                "count": { "type": "integer" }
+              },
+              "required": ["emoji", "count"]
+            }
+          },
+          "messages": {
+            "type": "array",
+            "description": "Per-message statistics",
+            "items": {
+              "type": "object",
+              "properties": {
+                "message_server_id": { "type": "integer" },
+                "timestamp": { "type": "integer" },
+                "views_count": { "type": "integer" },
+                "reaction_counts": {
+                  "type": "object",
+                  "additionalProperties": { "type": "integer" }
+                },
+                "text": { "type": "string" }
+              },
+              "required": ["message_server_id", "timestamp", "views_count"]
+            }
+          }
+        },
+        "required": ["jid", "name", "subscriber_count", "state", "total_views", "total_reactions", "message_count"]
       },
       "RateLimitConfig": {
         "type": "object",
@@ -1153,6 +1567,44 @@
           "params": {
             "conversations": { "type": "integer", "description": "Number of conversations synced" },
             "messages": { "type": "integer", "description": "Total messages stored" }
+          }
+        },
+        "event.newsletter_join": {
+          "description": "Joined a newsletter channel",
+          "params": {
+            "newsletter": { "$ref": "#/components/schemas/NewsletterInfo" }
+          }
+        },
+        "event.newsletter_leave": {
+          "description": "Left a newsletter channel",
+          "params": {
+            "jid": { "type": "string", "description": "Newsletter JID" },
+            "role": { "type": "string", "description": "Previous role" }
+          }
+        },
+        "event.newsletter_mute_change": {
+          "description": "Newsletter mute state changed",
+          "params": {
+            "jid": { "type": "string", "description": "Newsletter JID" },
+            "mute": { "type": "string", "description": "New mute state (on/off)" }
+          }
+        },
+        "event.newsletter_live_update": {
+          "description": "Live update with view/reaction counts for newsletter messages",
+          "params": {
+            "jid": { "type": "string", "description": "Newsletter JID" },
+            "messages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "message_server_id": { "type": "integer" },
+                  "message_id": { "type": "string" },
+                  "views_count": { "type": "integer" },
+                  "reaction_counts": { "type": "object", "additionalProperties": { "type": "integer" } }
+                }
+              }
+            }
           }
         }
       }

@@ -73,6 +73,18 @@ docker-compose build      # Rebuild images
 | `contact_check` | Check if phones are on WhatsApp (cached 24h, use `refresh: true` to force) |
 | `contact_profile_pic` | Get profile picture URL (cached 24h, use `refresh: true` to force) |
 | `group_invite_link` | Get group invite link (cached 1h, use `refresh: true` to force) |
+| `newsletters` | List subscribed channels (cached 24h, use `refresh: true` to fetch) |
+| `newsletter_info` | Get channel details by JID or invite link |
+| `newsletter_create` | Create a new channel |
+| `newsletter_follow` | Subscribe to a channel |
+| `newsletter_unfollow` | Unsubscribe from a channel |
+| `newsletter_mute` | Mute/unmute a channel |
+| `newsletter_messages` | Get messages from a channel |
+| `newsletter_send` | Send message to a channel (admin only) |
+| `newsletter_mark_viewed` | Mark channel messages as viewed |
+| `newsletter_react` | React to a channel message |
+| `newsletter_live_updates` | Subscribe to live updates (views/reactions) |
+| `newsletter_stats` | Get channel statistics (views, reactions, aggregates) |
 
 ## Local SQLite Cache
 
@@ -84,12 +96,14 @@ Read queries are cached in SQLite to prevent WhatsApp rate limits (429 errors):
 | Contact registration | TTL 24 hours |
 | Profile pictures | TTL 24 hours |
 | Group invite links | TTL 1 hour |
+| Newsletter (channel) metadata | TTL 24 hours |
 
 Cache tables in `data/whatsapp.db_history`:
 - `groups`, `group_participants` - Group data
 - `contact_check_cache` - WhatsApp registration status
 - `profile_pic_cache` - Profile picture URLs
 - `group_invite_cache` - Invite links
+- `newsletter_cache` - Channel metadata
 
 ## Configuration
 

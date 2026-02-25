@@ -148,6 +148,30 @@ func (h *HistoryStore) initTable() error {
 			updated_at INTEGER NOT NULL
 		);
 	`)
+	if err != nil {
+		return err
+	}
+
+	// Newsletter (channel) cache
+	_, err = h.db.Exec(`
+		CREATE TABLE IF NOT EXISTS newsletter_cache (
+			jid TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			description TEXT,
+			subscriber_count INTEGER DEFAULT 0,
+			verification_state TEXT,
+			state TEXT,
+			invite_code TEXT,
+			picture_url TEXT,
+			picture_id TEXT,
+			preview_url TEXT,
+			role TEXT,
+			mute TEXT,
+			created_at INTEGER,
+			updated_at INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_newsletter_name ON newsletter_cache(name);
+	`)
 	return err
 }
 
@@ -566,4 +590,133 @@ func (h *HistoryStore) GetCachedGroupInviteLink(groupJID string, maxAgeHours int
 func (h *HistoryStore) DeleteGroupInviteLink(groupJID string) error {
 	_, err := h.db.Exec("DELETE FROM group_invite_cache WHERE group_jid = ?", groupJID)
 	return err
+}
+
+// ============================================================================
+// Newsletter (Channel) Cache Methods
+// ============================================================================
+
+// StoreNewsletters stores multiple newsletters in a transaction (replaces all existing)
+func (h *HistoryStore) StoreNewsletters(newsletters []NewsletterInfo) error {
+	tx, err := h.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec("DELETE FROM newsletter_cache"); err != nil {
+		return err
+	}
+
+	now := time.Now().Unix()
+	stmt, err := tx.Prepare(`
+		INSERT INTO newsletter_cache (jid, name, description, subscriber_count, verification_state, state,
+			invite_code, picture_url, picture_id, preview_url, role, mute, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, n := range newsletters {
+		_, err := stmt.Exec(n.JID, n.Name, n.Description, n.SubscriberCount, n.VerificationState, n.State,
+			n.InviteCode, n.PictureURL, n.PictureID, n.PreviewURL, n.Role, n.Mute, n.CreatedAt, now)
+		if err != nil {
+			h.logger.Warnf("Failed to store newsletter %s: %v", n.JID, err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// GetCachedNewsletters retrieves all cached newsletters if not expired
+func (h *HistoryStore) GetCachedNewsletters() ([]NewsletterInfo, error) {
+	// Check if cache is still valid (24h TTL)
+	var updatedAt int64
+	err := h.db.QueryRow("SELECT updated_at FROM newsletter_cache LIMIT 1").Scan(&updatedAt)
+	if err != nil {
+		return nil, err
+	}
+	if time.Since(time.Unix(updatedAt, 0)) > 24*time.Hour {
+		return nil, sql.ErrNoRows
+	}
+
+	rows, err := h.db.Query(`
+		SELECT jid, name, description, subscriber_count, verification_state, state,
+			invite_code, picture_url, picture_id, preview_url, role, mute, created_at
+		FROM newsletter_cache ORDER BY name
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	newsletters := []NewsletterInfo{}
+	for rows.Next() {
+		var n NewsletterInfo
+		err := rows.Scan(&n.JID, &n.Name, &n.Description, &n.SubscriberCount, &n.VerificationState, &n.State,
+			&n.InviteCode, &n.PictureURL, &n.PictureID, &n.PreviewURL, &n.Role, &n.Mute, &n.CreatedAt)
+		if err != nil {
+			continue
+		}
+		if n.InviteCode != "" {
+			n.InviteLink = "https://whatsapp.com/channel/" + n.InviteCode
+		}
+		newsletters = append(newsletters, n)
+	}
+
+	return newsletters, nil
+}
+
+// GetCachedNewsletter retrieves a single cached newsletter by JID if not expired
+func (h *HistoryStore) GetCachedNewsletter(jid string) (*NewsletterInfo, error) {
+	var n NewsletterInfo
+	var updatedAt int64
+
+	err := h.db.QueryRow(`
+		SELECT jid, name, description, subscriber_count, verification_state, state,
+			invite_code, picture_url, picture_id, preview_url, role, mute, created_at, updated_at
+		FROM newsletter_cache WHERE jid = ?
+	`, jid).Scan(&n.JID, &n.Name, &n.Description, &n.SubscriberCount, &n.VerificationState, &n.State,
+		&n.InviteCode, &n.PictureURL, &n.PictureID, &n.PreviewURL, &n.Role, &n.Mute, &n.CreatedAt, &updatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check TTL (24 hours)
+	if time.Since(time.Unix(updatedAt, 0)) > 24*time.Hour {
+		return nil, sql.ErrNoRows
+	}
+
+	if n.InviteCode != "" {
+		n.InviteLink = "https://whatsapp.com/channel/" + n.InviteCode
+	}
+	return &n, nil
+}
+
+// StoreNewsletter stores or updates a single newsletter
+func (h *HistoryStore) StoreNewsletter(newsletter NewsletterInfo) error {
+	_, err := h.db.Exec(`
+		INSERT OR REPLACE INTO newsletter_cache (jid, name, description, subscriber_count, verification_state, state,
+			invite_code, picture_url, picture_id, preview_url, role, mute, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, newsletter.JID, newsletter.Name, newsletter.Description, newsletter.SubscriberCount,
+		newsletter.VerificationState, newsletter.State, newsletter.InviteCode, newsletter.PictureURL,
+		newsletter.PictureID, newsletter.PreviewURL, newsletter.Role, newsletter.Mute,
+		newsletter.CreatedAt, time.Now().Unix())
+	return err
+}
+
+// DeleteNewsletter removes a cached newsletter (for unfollow)
+func (h *HistoryStore) DeleteNewsletter(jid string) error {
+	_, err := h.db.Exec("DELETE FROM newsletter_cache WHERE jid = ?", jid)
+	return err
+}
+
+// HasCachedNewsletters returns true if there are any cached newsletters
+func (h *HistoryStore) HasCachedNewsletters() bool {
+	var count int
+	h.db.QueryRow("SELECT COUNT(*) FROM newsletter_cache").Scan(&count)
+	return count > 0
 }

@@ -425,3 +425,233 @@ class WhatsAppRPCClient:
             Dict with 'message' and current 'stats'
         """
         return await self.call("rate_limit_unpause")
+
+    # ========================================================================
+    # Chat History Methods
+    # ========================================================================
+
+    async def chat_history(self, **kwargs) -> list:
+        """
+        Get stored message history for a chat.
+
+        Args:
+            phone: Phone number (or use chat_id/group_id)
+            chat_id: Chat JID
+            group_id: Group JID
+            limit: Max messages to return (default: 50)
+            offset: Skip first N messages
+            sender_phone: Filter by sender
+            text_only: Only return text messages
+
+        Returns:
+            List of message dicts
+        """
+        return await self.call("chat_history", kwargs)
+
+    # ========================================================================
+    # Contacts Methods
+    # ========================================================================
+
+    async def contacts(self, query: str = None) -> list:
+        """
+        List all contacts with saved names.
+
+        Args:
+            query: Optional search filter
+
+        Returns:
+            List of contact dicts
+        """
+        params = {}
+        if query is not None:
+            params["query"] = query
+        return await self.call("contacts", params)
+
+    async def contact_info(self, phone: str) -> dict:
+        """
+        Get full contact info.
+
+        Args:
+            phone: Phone number
+
+        Returns:
+            Dict with name, business status, profile pic, etc.
+        """
+        return await self.call("contact_info", {"phone": phone})
+
+    # ========================================================================
+    # Newsletter (Channel) Methods
+    # ========================================================================
+
+    async def newsletters(self, refresh: bool = False) -> list:
+        """
+        List subscribed channels (cached 24h).
+
+        Args:
+            refresh: Force refresh from WhatsApp API
+
+        Returns:
+            List of newsletter info dicts
+        """
+        params = {}
+        if refresh:
+            params["refresh"] = True
+        return await self.call("newsletters", params)
+
+    async def newsletter_info(self, jid: str = None, invite: str = None, refresh: bool = False) -> dict:
+        """
+        Get channel details by JID or invite link.
+
+        Args:
+            jid: Channel JID (e.g., '123456789@newsletter')
+            invite: Invite link (e.g., 'https://whatsapp.com/channel/...')
+            refresh: Force refresh from API
+
+        Returns:
+            Newsletter info dict
+        """
+        params = {}
+        if jid:
+            params["jid"] = jid
+        if invite:
+            params["invite"] = invite
+        if refresh:
+            params["refresh"] = True
+        return await self.call("newsletter_info", params)
+
+    async def newsletter_create(self, name: str, description: str = None, picture: str = None) -> dict:
+        """
+        Create a new channel.
+
+        Args:
+            name: Channel name
+            description: Channel description (optional)
+            picture: Base64-encoded picture (optional)
+
+        Returns:
+            Newsletter info dict for created channel
+        """
+        params = {"name": name}
+        if description:
+            params["description"] = description
+        if picture:
+            params["picture"] = picture
+        return await self.call("newsletter_create", params)
+
+    async def newsletter_follow(self, jid: str) -> dict:
+        """
+        Subscribe to a channel.
+
+        Args:
+            jid: Channel JID
+        """
+        return await self.call("newsletter_follow", {"jid": jid})
+
+    async def newsletter_unfollow(self, jid: str) -> dict:
+        """
+        Unsubscribe from a channel.
+
+        Args:
+            jid: Channel JID
+        """
+        return await self.call("newsletter_unfollow", {"jid": jid})
+
+    async def newsletter_mute(self, jid: str, mute: bool = True) -> dict:
+        """
+        Mute or unmute a channel.
+
+        Args:
+            jid: Channel JID
+            mute: True to mute, False to unmute
+        """
+        return await self.call("newsletter_mute", {"jid": jid, "mute": mute})
+
+    async def newsletter_messages(self, jid: str, count: int = 10, before: int = None) -> list:
+        """
+        Get messages from a channel.
+
+        Args:
+            jid: Channel JID
+            count: Number of messages to fetch (default: 10)
+            before: Fetch messages before this server ID (for pagination)
+
+        Returns:
+            List of newsletter message dicts
+        """
+        params = {"jid": jid, "count": count}
+        if before is not None:
+            params["before"] = before
+        return await self.call("newsletter_messages", params)
+
+    async def newsletter_send(self, group_id: str, type: str = "text", message: str = None, media_data: dict = None) -> dict:
+        """
+        Send a message to a channel (admin only).
+
+        Args:
+            group_id: Channel JID (e.g., '123456789@newsletter')
+            type: Message type (text, image, video, etc.)
+            message: Text content
+            media_data: Media content dict with data, mime_type, caption
+
+        Returns:
+            Success message
+        """
+        params = {"group_id": group_id, "type": type}
+        if message:
+            params["message"] = message
+        if media_data:
+            params["media_data"] = media_data
+        return await self.call("newsletter_send", params)
+
+    async def newsletter_mark_viewed(self, jid: str, server_ids: list) -> dict:
+        """
+        Mark channel messages as viewed.
+
+        Args:
+            jid: Channel JID
+            server_ids: List of message server IDs to mark as viewed
+        """
+        return await self.call("newsletter_mark_viewed", {"jid": jid, "server_ids": server_ids})
+
+    async def newsletter_react(self, jid: str, server_id: int, reaction: str) -> dict:
+        """
+        React to a channel message.
+
+        Args:
+            jid: Channel JID
+            server_id: Message server ID
+            reaction: Reaction emoji
+        """
+        return await self.call("newsletter_react", {"jid": jid, "server_id": server_id, "reaction": reaction})
+
+    async def newsletter_live_updates(self, jid: str) -> dict:
+        """
+        Subscribe to live view/reaction updates for a channel.
+
+        Args:
+            jid: Channel JID
+
+        Returns:
+            Dict with duration (seconds) of subscription
+        """
+        return await self.call("newsletter_live_updates", {"jid": jid})
+
+    async def newsletter_stats(self, jid: str = None, invite: str = None, count: int = 20) -> dict:
+        """
+        Get channel statistics (views, reactions, aggregates).
+
+        Args:
+            jid: Channel JID
+            invite: Invite link (alternative to JID)
+            count: Number of recent messages to analyze (default: 20)
+
+        Returns:
+            Dict with subscriber_count, total_views, avg_views_per_message,
+            total_reactions, top_reactions, per-message breakdowns
+        """
+        params = {"count": count}
+        if jid:
+            params["jid"] = jid
+        if invite:
+            params["invite"] = invite
+        return await self.call("newsletter_stats", params)

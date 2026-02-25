@@ -406,6 +406,195 @@ func (h *RPCHandler) HandleRequest(req *RPCRequest) RPCResponse {
 			"stats":   h.service.GetRateLimitStats(),
 		}
 
+	// ========== Newsletter (Channel) Methods ==========
+
+	case "newsletters":
+		var p struct {
+			Refresh bool `json:"refresh"`
+		}
+		json.Unmarshal(req.Params, &p)
+		if newsletters, err := h.service.GetNewsletters(p.Refresh); err != nil {
+			resp.Error = &RPCError{Code: -32000, Message: err.Error()}
+		} else {
+			resp.Result = newsletters
+		}
+
+	case "newsletter_info":
+		var p struct {
+			JID     string `json:"jid"`
+			Invite  string `json:"invite"`
+			Refresh bool   `json:"refresh"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			resp.Error = &RPCError{Code: -32602, Message: "Invalid params: " + err.Error()}
+		} else {
+			jidOrInvite := p.JID
+			if jidOrInvite == "" {
+				jidOrInvite = p.Invite
+			}
+			if jidOrInvite == "" {
+				resp.Error = &RPCError{Code: -32602, Message: "jid or invite is required"}
+			} else if info, err := h.service.GetNewsletterInfo(jidOrInvite, p.Refresh); err != nil {
+				resp.Error = &RPCError{Code: -32000, Message: err.Error()}
+			} else {
+				resp.Result = info
+			}
+		}
+
+	case "newsletter_create":
+		var p whatsapp.CreateNewsletterRequest
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			resp.Error = &RPCError{Code: -32602, Message: "Invalid params: " + err.Error()}
+		} else if p.Name == "" {
+			resp.Error = &RPCError{Code: -32602, Message: "name is required"}
+		} else if info, err := h.service.CreateNewsletter(&p); err != nil {
+			resp.Error = &RPCError{Code: -32000, Message: err.Error()}
+		} else {
+			resp.Result = info
+		}
+
+	case "newsletter_follow":
+		var p struct {
+			JID string `json:"jid"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			resp.Error = &RPCError{Code: -32602, Message: "Invalid params: " + err.Error()}
+		} else if p.JID == "" {
+			resp.Error = &RPCError{Code: -32602, Message: "jid is required"}
+		} else if err := h.service.FollowNewsletter(p.JID); err != nil {
+			resp.Error = &RPCError{Code: -32000, Message: err.Error()}
+		} else {
+			resp.Result = map[string]string{"message": "Followed"}
+		}
+
+	case "newsletter_unfollow":
+		var p struct {
+			JID string `json:"jid"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			resp.Error = &RPCError{Code: -32602, Message: "Invalid params: " + err.Error()}
+		} else if p.JID == "" {
+			resp.Error = &RPCError{Code: -32602, Message: "jid is required"}
+		} else if err := h.service.UnfollowNewsletter(p.JID); err != nil {
+			resp.Error = &RPCError{Code: -32000, Message: err.Error()}
+		} else {
+			resp.Result = map[string]string{"message": "Unfollowed"}
+		}
+
+	case "newsletter_mute":
+		var p struct {
+			JID  string `json:"jid"`
+			Mute bool   `json:"mute"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			resp.Error = &RPCError{Code: -32602, Message: "Invalid params: " + err.Error()}
+		} else if p.JID == "" {
+			resp.Error = &RPCError{Code: -32602, Message: "jid is required"}
+		} else if err := h.service.NewsletterToggleMute(p.JID, p.Mute); err != nil {
+			resp.Error = &RPCError{Code: -32000, Message: err.Error()}
+		} else {
+			resp.Result = map[string]interface{}{"message": "Mute updated", "mute": p.Mute}
+		}
+
+	case "newsletter_messages":
+		var p struct {
+			JID    string `json:"jid"`
+			Count  int    `json:"count"`
+			Before int    `json:"before"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			resp.Error = &RPCError{Code: -32602, Message: "Invalid params: " + err.Error()}
+		} else if p.JID == "" {
+			resp.Error = &RPCError{Code: -32602, Message: "jid is required"}
+		} else if msgs, err := h.service.GetNewsletterMessages(p.JID, p.Count, p.Before); err != nil {
+			resp.Error = &RPCError{Code: -32000, Message: err.Error()}
+		} else {
+			resp.Result = msgs
+		}
+
+	case "newsletter_send":
+		var msgReq whatsapp.MessageRequest
+		if err := json.Unmarshal(req.Params, &msgReq); err != nil {
+			resp.Error = &RPCError{Code: -32602, Message: "Invalid params: " + err.Error()}
+		} else if msgReq.GroupID == "" {
+			resp.Error = &RPCError{Code: -32602, Message: "group_id (newsletter JID) is required"}
+		} else if err := h.service.SendNewsletterMessage(msgReq.GroupID, &msgReq); err != nil {
+			resp.Error = &RPCError{Code: -32000, Message: err.Error()}
+		} else {
+			resp.Result = map[string]string{"message": "Sent"}
+		}
+
+	case "newsletter_mark_viewed":
+		var p struct {
+			JID       string `json:"jid"`
+			ServerIDs []int  `json:"server_ids"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			resp.Error = &RPCError{Code: -32602, Message: "Invalid params: " + err.Error()}
+		} else if p.JID == "" {
+			resp.Error = &RPCError{Code: -32602, Message: "jid is required"}
+		} else if len(p.ServerIDs) == 0 {
+			resp.Error = &RPCError{Code: -32602, Message: "server_ids is required"}
+		} else if err := h.service.NewsletterMarkViewed(p.JID, p.ServerIDs); err != nil {
+			resp.Error = &RPCError{Code: -32000, Message: err.Error()}
+		} else {
+			resp.Result = map[string]string{"message": "Marked as viewed"}
+		}
+
+	case "newsletter_react":
+		var p struct {
+			JID      string `json:"jid"`
+			ServerID int    `json:"server_id"`
+			Reaction string `json:"reaction"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			resp.Error = &RPCError{Code: -32602, Message: "Invalid params: " + err.Error()}
+		} else if p.JID == "" {
+			resp.Error = &RPCError{Code: -32602, Message: "jid is required"}
+		} else if p.ServerID == 0 {
+			resp.Error = &RPCError{Code: -32602, Message: "server_id is required"}
+		} else if err := h.service.NewsletterSendReaction(p.JID, p.ServerID, p.Reaction); err != nil {
+			resp.Error = &RPCError{Code: -32000, Message: err.Error()}
+		} else {
+			resp.Result = map[string]string{"message": "Reaction sent"}
+		}
+
+	case "newsletter_live_updates":
+		var p struct {
+			JID string `json:"jid"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			resp.Error = &RPCError{Code: -32602, Message: "Invalid params: " + err.Error()}
+		} else if p.JID == "" {
+			resp.Error = &RPCError{Code: -32602, Message: "jid is required"}
+		} else if duration, err := h.service.NewsletterSubscribeLiveUpdates(p.JID); err != nil {
+			resp.Error = &RPCError{Code: -32000, Message: err.Error()}
+		} else {
+			resp.Result = map[string]interface{}{"message": "Subscribed", "duration_seconds": duration}
+		}
+
+	case "newsletter_stats":
+		var p struct {
+			JID    string `json:"jid"`
+			Invite string `json:"invite"`
+			Count  int    `json:"count"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			resp.Error = &RPCError{Code: -32602, Message: "Invalid params: " + err.Error()}
+		} else {
+			jidOrInvite := p.JID
+			if jidOrInvite == "" {
+				jidOrInvite = p.Invite
+			}
+			if jidOrInvite == "" {
+				resp.Error = &RPCError{Code: -32602, Message: "jid or invite is required"}
+			} else if stats, err := h.service.GetNewsletterStats(jidOrInvite, p.Count); err != nil {
+				resp.Error = &RPCError{Code: -32000, Message: err.Error()}
+			} else {
+				resp.Result = stats
+			}
+		}
+
 	default:
 		resp.Error = &RPCError{Code: -32601, Message: "Method not found: " + req.Method}
 	}
