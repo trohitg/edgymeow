@@ -195,6 +195,30 @@ async function buildCross() {
   log(`All ${CROSS_TARGETS.length} binaries built`, 'green');
 }
 
+async function web(opts = {}) {
+  const webPort = opts.port ? parseInt(opts.port) : 3001;
+  const wsPort = opts.wsPort ? parseInt(opts.wsPort) : getPort(opts);
+  const script = join(__dirname, 'serve-client.js');
+
+  log(`Starting web UI on port ${webPort} (backend: ${wsPort})...`, 'blue');
+  spawn('node', [script], {
+    cwd: ROOT,
+    stdio: 'inherit',
+    env: { ...process.env, WEB_PORT: String(webPort), WS_PORT: String(wsPort) },
+  });
+}
+
+async function dev(opts = {}) {
+  const port = getPort(opts);
+  const webPort = opts.webPort ? parseInt(opts.webPort) : 3001;
+
+  // Start API server in background
+  await api({ ...opts, foreground: false });
+
+  // Start web UI in foreground
+  await web({ port: String(webPort), wsPort: String(port) });
+}
+
 // Global port option for all commands
 const portOption = ['-p, --port <port>', 'API port (default: 9400, or PORT/WHATSAPP_RPC_PORT env var)'];
 
@@ -204,6 +228,8 @@ program.command('stop').description('Stop API server').option(...portOption).act
 program.command('restart').description('Restart API server').option(...portOption).action(async (opts) => { await stop(opts); await sleep(1000); await start(opts); });
 program.command('status').description('Show server status').option(...portOption).action(status);
 program.command('api').description('Start API server').option('-f, --foreground', 'Run in foreground').option(...portOption).action(api);
+program.command('web').description('Start web dashboard (static client)').option('-p, --port <port>', 'Web UI port (default: 3001)').option('--ws-port <port>', 'Go backend WebSocket port (default: 9400)').action(web);
+program.command('dev').description('Start API server + web dashboard').option(...portOption).option('--web-port <port>', 'Web UI port (default: 3001)').action(dev);
 program.command('build').description('Build binary from source (requires Go)').action(build);
 program.command('build-cross').description('Cross-compile binaries for all platforms (desktop + Android)').action(buildCross);
 program.command('clean').description('Full cleanup (stop server, remove bin/, data/, node_modules/)').action(clean);

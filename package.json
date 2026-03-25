@@ -28,6 +28,7 @@
     "bin/",
     "scripts/",
     "configs/",
+    "web/client/",
     "README.md"
   ],
   "publishConfig": {
@@ -44,6 +45,7 @@
     "status": "node scripts/cli.js status",
     "api": "node scripts/cli.js api --foreground",
     "web": "node scripts/cli.js web",
+    "dev": "node scripts/cli.js dev",
     "prebuild": "node -e \"require('fs').existsSync('node_modules') || process.exit(1)\" || npm install",
     "build": "node scripts/cli.js build",
     "build-cross": "node scripts/cli.js build-cross",
