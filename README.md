@@ -78,10 +78,31 @@ npx whatsapp-rpc restart         # Restart API server
 npx whatsapp-rpc status          # Check if running
 npx whatsapp-rpc api --foreground  # Run in foreground (for Docker)
 npx whatsapp-rpc build           # Build from source (requires Go)
+npx whatsapp-rpc web             # Start standalone web dashboard (no Python needed)
+npx whatsapp-rpc dev             # Start API + web dashboard together
 
 # Custom port
 npx whatsapp-rpc start --port 8080
 ```
+
+## Web Dashboard
+
+A standalone static web client that connects directly to the Go WebSocket backend -- no Python/Flask required:
+
+```bash
+# Start API server first
+npx whatsapp-rpc start
+
+# Then start the web dashboard
+npx whatsapp-rpc web --port 3001 --ws-port 9400
+
+# Or start both together
+npx whatsapp-rpc dev
+```
+
+Open `http://localhost:3001` for the full dashboard with pages for messaging, groups, contacts, and settings.
+
+The web client is in `web/client/` and can also be served by any static file server. Set `window.WS_PORT` to point to the Go backend port.
 
 ## Docker
 
@@ -502,6 +523,25 @@ pb.start()
 ```
 
 Then connect via WebSocket at `ws://127.0.0.1:9400/ws/rpc`.
+
+### CrossMeow (Flutter Example App)
+
+A complete Flutter Android app is in `examples/android/`. It bundles the Go binary and the static web client into a single APK:
+
+```bash
+cd examples/android
+
+# Build Go binary for emulator
+cd ../../ && npm run build-cross  # or manually cross-compile
+
+# Copy binary to jniLibs
+cp bin/libwhatsapp-rpc-android-arm64.so examples/android/android/app/src/main/jniLibs/arm64-v8a/libwhatsapp-rpc.so
+
+# Build APK
+cd examples/android && flutter build apk --debug
+```
+
+The app uses a Dart HTTP server to serve the web client from Flutter assets, with a WebView loading the dashboard. See [examples/android/](examples/android/) for the full source.
 
 ## Requirements
 

@@ -20,6 +20,7 @@ src/
     whatsapp_rpc/          # Pip installable client
 scripts/
   cli.js                   # CLI (all commands)
+  serve-client.js          # Static web server for web/client/
 configs/
   config.yaml              # Configuration
 data/                      # Runtime data (gitignored)
@@ -27,8 +28,20 @@ data/                      # Runtime data (gitignored)
   qr/                      # QR code images
 bin/                       # Build output (gitignored)
 web/
-  app.py                   # Flask UI
-  templates/               # HTML templates
+  app.py                   # Flask UI (legacy, requires Python)
+  templates/               # Flask/Jinja2 HTML templates (legacy)
+  client/                  # Standalone static web client (no Python needed)
+    js/rpc-client.js       # WebSocket JSON-RPC 2.0 client
+    js/app.js              # Shared nav, status, RPC init
+    index.html             # Dashboard
+    send.html              # Simple send
+    messaging.html         # Enhanced messaging
+    messages.html          # Received messages
+    groups.html            # Groups management
+    contacts.html          # Contacts
+    settings.html          # Settings & rate limiting
+examples/
+  android/                 # CrossMeow Flutter app (WebView + Go binary)
 ```
 
 ## Commands
@@ -42,7 +55,8 @@ npm run build-cross  # Cross-compile all 7 platform targets
 npm run clean     # Full cleanup (stops processes, removes bin/, data/*.db, node_modules/)
 npm run status    # Check status
 npm run api       # Start API only
-npm run web       # Start Web only
+npm run web       # Start static web client (no Python needed)
+npm run dev       # Start API + static web client together
 ```
 
 ### Docker
@@ -136,8 +150,13 @@ newsletter:
 | `src/go/whatsapp/messages.go` | Send all message types |
 | `src/go/whatsapp/history.go` | SQLite cache (groups, contacts, profile pics) |
 | `src/go/rpc/rpc.go` | JSON-RPC method routing |
-| `web/app.py` | Flask routes, Socket.IO |
-| `scripts/cli.js` | CLI for all commands (start/stop/build/clean) |
+| `web/app.py` | Flask routes, Socket.IO (legacy) |
+| `web/client/` | Standalone static web client (connects directly to Go WS) |
+| `web/client/js/rpc-client.js` | WebSocket JSON-RPC 2.0 client class |
+| `web/client/js/app.js` | Shared nav, status indicator, RPC init |
+| `scripts/cli.js` | CLI for all commands (start/stop/build/clean/web/dev) |
+| `scripts/serve-client.js` | Node.js static file server for web/client/ |
+| `examples/android/` | CrossMeow Flutter app (WebView + embedded Go binary) |
 
 ## Cross-Platform / Android
 
