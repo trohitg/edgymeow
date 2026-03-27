@@ -13,15 +13,15 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"whatsapp-rpc/src/go/config"
-	server "whatsapp-rpc/src/go/rpc"
-	"whatsapp-rpc/src/go/whatsapp"
+	"edgymeow/src/go/config"
+	server "edgymeow/src/go/rpc"
+	"edgymeow/src/go/whatsapp"
 )
 
 func main() {
 	// Android DNS resolver: Go's default resolver tries [::1]:53 which fails on Android.
-	// Activated by GOOS=android or WHATSAPP_RPC_ANDROID=1 env var (for emulator builds).
-	if runtime.GOOS == "android" || os.Getenv("WHATSAPP_RPC_ANDROID") == "1" {
+	// Activated by GOOS=android or EDGYMEOW_ANDROID=1 env var (for emulator builds).
+	if runtime.GOOS == "android" || os.Getenv("EDGYMEOW_ANDROID") == "1" {
 		net.DefaultResolver = &net.Resolver{
 			PreferGo: true,
 			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {

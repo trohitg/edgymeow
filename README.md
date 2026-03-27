@@ -1,7 +1,7 @@
-# WhatsApp WEB RPC
+# EdgyMeow
 
-[![npm version](https://img.shields.io/npm/v/whatsapp-rpc.svg)](https://www.npmjs.com/package/whatsapp-rpc)
-[![PyPI version](https://img.shields.io/pypi/v/whatsapp-rpc.svg)](https://pypi.org/project/whatsapp-rpc/)
+[![npm version](https://img.shields.io/npm/v/edgymeow.svg)](https://www.npmjs.com/package/edgymeow)
+[![PyPI version](https://img.shields.io/pypi/v/edgymeow.svg)](https://pypi.org/project/edgymeow/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 WebSocket JSON-RPC 2.0 API for QR Based WhatsApp Web.
@@ -11,7 +11,7 @@ WebSocket JSON-RPC 2.0 API for QR Based WhatsApp Web.
 ## Installation
 
 ```bash
-npm install whatsapp-rpc
+npm install edgymeow
 ```
 
 Pre-built binaries are automatically downloaded for your platform (Linux, macOS, Windows).
@@ -20,13 +20,13 @@ Pre-built binaries are automatically downloaded for your platform (Linux, macOS,
 
 ```bash
 # Start the API server
-npx whatsapp-rpc start
+npx edgymeow start
 
 # Check status
-npx whatsapp-rpc status
+npx edgymeow status
 
 # Stop the server
-npx whatsapp-rpc stop
+npx edgymeow stop
 ```
 
 ## Architecture
@@ -41,7 +41,7 @@ npx whatsapp-rpc stop
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────┐
-│              WhatsApp RPC Server (:9400)                 │
+│              EdgyMeow Server (:9400)                 │
 │  ┌─────────────────────────────────────────────────┐    │
 │  │  • JSON-RPC 2.0 Handler                         │    │
 │  │  • Rate Limiter (anti-ban protection)           │    │
@@ -72,17 +72,17 @@ Data Storage:
 ## CLI Commands
 
 ```bash
-npx whatsapp-rpc start           # Start API server (background)
-npx whatsapp-rpc stop            # Stop API server
-npx whatsapp-rpc restart         # Restart API server
-npx whatsapp-rpc status          # Check if running
-npx whatsapp-rpc api --foreground  # Run in foreground (for Docker)
-npx whatsapp-rpc build           # Build from source (requires Go)
-npx whatsapp-rpc web             # Start standalone web dashboard (no Python needed)
-npx whatsapp-rpc dev             # Start API + web dashboard together
+npx edgymeow start           # Start API server (background)
+npx edgymeow stop            # Stop API server
+npx edgymeow restart         # Restart API server
+npx edgymeow status          # Check if running
+npx edgymeow api --foreground  # Run in foreground (for Docker)
+npx edgymeow build           # Build from source (requires Go)
+npx edgymeow web             # Start standalone web dashboard (no Python needed)
+npx edgymeow dev             # Start API + web dashboard together
 
 # Custom port
-npx whatsapp-rpc start --port 8080
+npx edgymeow start --port 8080
 ```
 
 ## Web Dashboard
@@ -91,13 +91,13 @@ A standalone static web client that connects directly to the Go WebSocket backen
 
 ```bash
 # Start API server first
-npx whatsapp-rpc start
+npx edgymeow start
 
 # Then start the web dashboard
-npx whatsapp-rpc web --port 3001 --ws-port 9400
+npx edgymeow web --port 3001 --ws-port 9400
 
 # Or start both together
-npx whatsapp-rpc dev
+npx edgymeow dev
 ```
 
 Open `http://localhost:3001` for the full dashboard with pages for messaging, groups, contacts, and settings.
@@ -109,11 +109,11 @@ The web client is in `web/client/` and can also be served by any static file ser
 ```dockerfile
 FROM node:20-alpine
 WORKDIR /app
-RUN npm init -y && npm install whatsapp-rpc
+RUN npm init -y && npm install edgymeow
 RUN mkdir -p /app/data
 ENV PORT=9400
 EXPOSE 9400
-CMD ["npx", "whatsapp-rpc", "api", "--foreground"]
+CMD ["npx", "edgymeow", "api", "--foreground"]
 ```
 
 ## API Reference
@@ -432,9 +432,9 @@ The server pushes events as JSON-RPC notifications (no `id` field):
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | 9400 | WebSocket API port |
-| `WHATSAPP_RPC_PORT` | 9400 | WebSocket API port (alternative to `PORT`) |
-| `WHATSAPP_RPC_SKIP_BINARY_DOWNLOAD` | - | Set to `1` to skip binary download |
-| `WHATSAPP_RPC_PREFER_SOURCE` | - | Set to `1` to build from source if Go is installed |
+| `EDGYMEOW_PORT` | 9400 | WebSocket API port (alternative to `PORT`) |
+| `EDGYMEOW_SKIP_BINARY_DOWNLOAD` | - | Set to `1` to skip binary download |
+| `EDGYMEOW_PREFER_SOURCE` | - | Set to `1` to build from source if Go is installed |
 
 ## Data Files
 
@@ -460,12 +460,12 @@ See [schema.json](schema.json) for complete OpenRPC specification.
 An async Python client is available on PyPI:
 
 ```bash
-pip install whatsapp-rpc
+pip install edgymeow
 ```
 
 ```python
 import asyncio
-from whatsapp_rpc import WhatsAppRPCClient
+from edgymeow import WhatsAppRPCClient
 
 async def main():
     client = WhatsAppRPCClient("ws://localhost:9400/ws/rpc")
@@ -492,17 +492,17 @@ npm run build-cross
 
 # Or manually:
 # arm64 real device
-CGO_ENABLED=0 GOOS=android GOARCH=arm64 go build -ldflags="-s -w" -o libwhatsapp-rpc.so ./src/go/cmd/server
+CGO_ENABLED=0 GOOS=android GOARCH=arm64 go build -ldflags="-s -w" -o libedgymeow.so ./src/go/cmd/server
 
 # x86_64 emulator (use GOOS=linux, not android)
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o libwhatsapp-rpc-x86_64.so ./src/go/cmd/server
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o libedgymeow-x86_64.so ./src/go/cmd/server
 ```
 
 Place binaries in your Android project:
 ```
 app/android/app/src/main/jniLibs/
-    arm64-v8a/libwhatsapp-rpc.so
-    x86_64/libwhatsapp-rpc-x86_64.so
+    arm64-v8a/libedgymeow.so
+    x86_64/libedgymeow-x86_64.so
 ```
 
 Required Gradle config (`build.gradle.kts`):
@@ -515,10 +515,10 @@ android {
 
 Launch from Kotlin:
 ```kotlin
-val binary = File(applicationInfo.nativeLibraryDir, "libwhatsapp-rpc.so")
+val binary = File(applicationInfo.nativeLibraryDir, "libedgymeow.so")
 val pb = ProcessBuilder(binary.absolutePath)
 pb.environment()["SSL_CERT_DIR"] = "/system/etc/security/cacerts"
-pb.environment()["WHATSAPP_RPC_ANDROID"] = "1"  // enables Android DNS resolver
+pb.environment()["EDGYMEOW_ANDROID"] = "1"  // enables Android DNS resolver
 pb.start()
 ```
 
@@ -535,7 +535,7 @@ cd examples/android
 cd ../../ && npm run build-cross  # or manually cross-compile
 
 # Copy binary to jniLibs
-cp bin/libwhatsapp-rpc-android-arm64.so examples/android/android/app/src/main/jniLibs/arm64-v8a/libwhatsapp-rpc.so
+cp bin/libedgymeow-android-arm64.so examples/android/android/app/src/main/jniLibs/arm64-v8a/libedgymeow.so
 
 # Build APK
 cd examples/android && flutter build apk --debug

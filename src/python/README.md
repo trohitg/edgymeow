@@ -1,25 +1,25 @@
-# WhatsApp RPC - Python Client
+# EdgyMeow - Python Client
 
-Async Python client for the [WhatsApp RPC](https://github.com/trohitg/whatsapp-rpc) WebSocket API.
+Async Python client for the [EdgyMeow](https://github.com/trohitg/edgymeow) WebSocket API.
 
 ## Installation
 
 ```bash
-pip install whatsapp-rpc
+pip install edgymeow
 ```
 
-Requires the WhatsApp RPC server running separately:
+Requires the EdgyMeow server running separately:
 
 ```bash
-npm install -g whatsapp-rpc
-npx whatsapp-rpc start
+npm install -g edgymeow
+npx edgymeow start
 ```
 
 ## Usage
 
 ```python
 import asyncio
-from whatsapp_rpc import WhatsAppRPCClient
+from edgymeow import WhatsAppRPCClient
 
 async def main():
     client = WhatsAppRPCClient("ws://localhost:9400/ws/rpc")

@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 
-	"whatsapp-rpc/src/go/whatsapp"
+	"edgymeow/src/go/whatsapp"
 )
 
 // Server handles WebSocket RPC connections

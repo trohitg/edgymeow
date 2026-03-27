@@ -36,13 +36,13 @@ jobs:
           - os: ubuntu-latest
             goos: android
             goarch: arm64
-            output_name: libwhatsapp-rpc-android-arm64.so
-            artifact_name: libwhatsapp-rpc-android-arm64
+            output_name: libedgymeow-android-arm64.so
+            artifact_name: libedgymeow-android-arm64
           - os: ubuntu-latest
             goos: linux
             goarch: amd64
-            output_name: libwhatsapp-rpc-android-x86_64.so
-            artifact_name: libwhatsapp-rpc-android-x86_64
+            output_name: libedgymeow-android-x86_64.so
+            artifact_name: libedgymeow-android-x86_64
             is_android_emu: true
 
     runs-on: ${{ matrix.os }}
@@ -71,7 +71,7 @@ jobs:
             if [ "${{ matrix.goos }}" = "windows" ]; then
               ext=".exe"
             fi
-            output_name="whatsapp-rpc-server-${{ matrix.goos }}-${{ matrix.goarch }}${ext}"
+            output_name="edgymeow-server-${{ matrix.goos }}-${{ matrix.goarch }}${ext}"
           fi
 
           echo "Building ${output_name}..."
@@ -83,10 +83,10 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name || format('whatsapp-rpc-server-{0}-{1}', matrix.goos, matrix.goarch) }}
+          name: ${{ matrix.artifact_name || format('edgymeow-server-{0}-{1}', matrix.goos, matrix.goarch) }}
           path: |
-            whatsapp-rpc-server-*
-            libwhatsapp-rpc-*
+            edgymeow-server-*
+            libedgymeow-*
           retention-days: 1
 
   # Step 2: Create GitHub Release with binaries attached
@@ -104,15 +104,15 @@ jobs:
       - name: List artifacts
         run: |
           echo "Downloaded artifacts:"
-          find artifacts -type f \( -name "whatsapp-rpc-server-*" -o -name "libwhatsapp-rpc-*" \) | head -20
+          find artifacts -type f \( -name "edgymeow-server-*" -o -name "libedgymeow-*" \) | head -20
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            artifacts/**/whatsapp-rpc-server-*
-            artifacts/**/libwhatsapp-rpc-*
+            artifacts/**/edgymeow-server-*
+            artifacts/**/libedgymeow-*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -173,7 +173,7 @@ jobs:
             const fs = require('fs');
             const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
             pkg.version = '$VERSION';
-            pkg.name = '@trohitg/whatsapp-rpc';
+            pkg.name = '@trohitg/edgymeow';
             pkg.publishConfig = { registry: 'https://npm.pkg.github.com' };
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "

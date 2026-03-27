@@ -1,4 +1,4 @@
-# WhatsApp RPC - Development Guidelines
+# EdgyMeow - Development Guidelines
 
 ## Overview
 
@@ -17,7 +17,7 @@ src/
     whatsapp/messages.go   # Message sending
     whatsapp/types.go      # Data structures
   python/
-    whatsapp_rpc/          # Pip installable client
+    edgymeow/              # Pip installable client
 scripts/
   cli.js                   # CLI (all commands)
   serve-client.js          # Static web server for web/client/
@@ -175,20 +175,20 @@ npm run build-cross  # All 7 targets
 
 | Target | GOOS | GOARCH | Output |
 |--------|------|--------|--------|
-| Linux x64 | linux | amd64 | `whatsapp-rpc-server-linux-amd64` |
-| Linux arm64 | linux | arm64 | `whatsapp-rpc-server-linux-arm64` |
-| macOS x64 | darwin | amd64 | `whatsapp-rpc-server-darwin-amd64` |
-| macOS arm64 | darwin | arm64 | `whatsapp-rpc-server-darwin-arm64` |
-| Windows x64 | windows | amd64 | `whatsapp-rpc-server-windows-amd64.exe` |
-| Android arm64 | android | arm64 | `libwhatsapp-rpc-android-arm64.so` |
-| Android x86_64 | linux | amd64 | `libwhatsapp-rpc-android-x86_64.so` |
+| Linux x64 | linux | amd64 | `edgymeow-server-linux-amd64` |
+| Linux arm64 | linux | arm64 | `edgymeow-server-linux-arm64` |
+| macOS x64 | darwin | amd64 | `edgymeow-server-darwin-amd64` |
+| macOS arm64 | darwin | arm64 | `edgymeow-server-darwin-arm64` |
+| Windows x64 | windows | amd64 | `edgymeow-server-windows-amd64.exe` |
+| Android arm64 | android | arm64 | `libedgymeow-android-arm64.so` |
+| Android x86_64 | linux | amd64 | `libedgymeow-android-x86_64.so` |
 
 Android emulator uses `GOOS=linux` (not `android`) because `android/amd64` requires CGO.
 
 ### Android Integration
 - Binary must be named `lib*.so` and placed in `jniLibs/{abi}/` for SELinux execute permission
 - Set env var `SSL_CERT_DIR=/system/etc/security/cacerts` when launching
-- Set env var `WHATSAPP_RPC_ANDROID=1` to activate Android DNS resolver (for emulator builds)
+- Set env var `EDGYMEOW_ANDROID=1` to activate Android DNS resolver (for emulator builds)
 - Gradle: `useLegacyPackaging = true` and `abiFilters += listOf("x86_64", "arm64-v8a")`
 
 ## Versioning

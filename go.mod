@@ -1,4 +1,4 @@
-module whatsapp-rpc
+module edgymeow
 
 go 1.26
 

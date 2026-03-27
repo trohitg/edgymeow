@@ -42,7 +42,7 @@ class MainActivity : FlutterActivity() {
     private fun startBackend(port: Int) {
         if (backendProcess?.isAlive == true) return
 
-        val binaryFile = File(applicationInfo.nativeLibraryDir, "libwhatsapp-rpc.so")
+        val binaryFile = File(applicationInfo.nativeLibraryDir, "libedgymeow.so")
         if (!binaryFile.exists()) {
             throw RuntimeException("Binary not found at ${binaryFile.absolutePath}")
         }
@@ -63,13 +63,13 @@ class MainActivity : FlutterActivity() {
         val pb = ProcessBuilder(binaryFile.absolutePath)
         pb.directory(filesDir)
         pb.environment()["SSL_CERT_DIR"] = "/system/etc/security/cacerts"
-        pb.environment()["WHATSAPP_RPC_ANDROID"] = "1"
+        pb.environment()["EDGYMEOW_ANDROID"] = "1"
         pb.redirectErrorStream(true)
         backendProcess = pb.start()
 
         Thread {
             backendProcess?.inputStream?.bufferedReader()?.forEachLine { line ->
-                android.util.Log.d("WhatsAppRPC", line)
+                android.util.Log.d("EdgyMeow", line)
             }
         }.start()
     }

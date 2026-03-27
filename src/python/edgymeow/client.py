@@ -1,5 +1,5 @@
 """
-WhatsApp RPC Client - Async JSON-RPC 2.0 client over WebSocket
+EdgyMeow Client - Async JSON-RPC 2.0 client over WebSocket
 
 Uses the official `websockets` library for stable async WebSocket communication.
 Implements JSON-RPC 2.0 protocol for bidirectional communication with Go backend.

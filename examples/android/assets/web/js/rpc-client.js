@@ -1,5 +1,5 @@
 /**
- * WebSocket JSON-RPC 2.0 Client for whatsapp-rpc
+ * WebSocket JSON-RPC 2.0 Client for edgymeow
  * Connects directly to the Go backend at ws://localhost:PORT/ws/rpc
  *
  * Based on ws-chat test-client.html pattern.

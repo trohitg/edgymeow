@@ -33,11 +33,11 @@ jobs:
           - os: ubuntu-latest
             goos: android
             goarch: arm64
-            output_name: libwhatsapp-rpc-android-arm64.so
+            output_name: libedgymeow-android-arm64.so
           - os: ubuntu-latest
             goos: linux
             goarch: amd64
-            output_name: libwhatsapp-rpc-android-x86_64.so
+            output_name: libedgymeow-android-x86_64.so
             is_android_emu: true
 
     runs-on: ${{ matrix.os }}
@@ -66,7 +66,7 @@ jobs:
             if [ "${{ matrix.goos }}" = "windows" ]; then
               ext=".exe"
             fi
-            output_name="whatsapp-rpc-server-${{ matrix.goos }}-${{ matrix.goarch }}${ext}"
+            output_name="edgymeow-server-${{ matrix.goos }}-${{ matrix.goarch }}${ext}"
           fi
           echo "Building ${output_name}..."
           go build -ldflags="-s -w" -o "${output_name}" ./src/go/cmd/server
@@ -138,13 +138,13 @@ jobs:
           file: ./Dockerfile
           push: false
           load: true
-          tags: whatsapp-rpc:test
+          tags: edgymeow:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Test container starts
         run: |
-          docker run -d --name test-container -p 9400:9400 whatsapp-rpc:test
+          docker run -d --name test-container -p 9400:9400 edgymeow:test
           sleep 5
           docker logs test-container
           docker stop test-container

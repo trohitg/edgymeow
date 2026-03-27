@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 
-	"whatsapp-rpc/src/go/whatsapp"
+	"edgymeow/src/go/whatsapp"
 )
 
 // JSON-RPC 2.0 message types

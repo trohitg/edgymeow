@@ -26,7 +26,7 @@ import (
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
 
-	"whatsapp-rpc/src/go/config"
+	"edgymeow/src/go/config"
 )
 
 type Service struct {

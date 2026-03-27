@@ -1,4 +1,4 @@
-# WhatsApp RPC API
+# EdgyMeow API
 
 ## Connection
 

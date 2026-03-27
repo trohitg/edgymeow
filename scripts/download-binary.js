@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Downloads pre-built WhatsApp RPC server binary from GitHub releases.
+ * Downloads pre-built EdgyMeow server binary from GitHub releases.
  * Called automatically during npm postinstall.
  *
  * Skip conditions:
- * - WHATSAPP_RPC_SKIP_BINARY_DOWNLOAD=1
+ * - EDGYMEOW_SKIP_BINARY_DOWNLOAD=1
  * - Binary already exists
  */
 import { createWriteStream, existsSync, mkdirSync, chmodSync, readFileSync, unlinkSync } from 'fs';
@@ -110,29 +110,29 @@ function downloadFile(url, dest) {
 // Main
 async function main() {
   // Skip if explicitly disabled
-  if (process.env.WHATSAPP_RPC_SKIP_BINARY_DOWNLOAD === '1') {
-    console.log('[whatsapp-rpc] Skipping binary download (WHATSAPP_RPC_SKIP_BINARY_DOWNLOAD=1)');
+  if (process.env.EDGYMEOW_SKIP_BINARY_DOWNLOAD === '1') {
+    console.log('[edgymeow] Skipping binary download (EDGYMEOW_SKIP_BINARY_DOWNLOAD=1)');
     return;
   }
 
   const platformInfo = getPlatformInfo();
   if (!platformInfo) {
-    console.error(`[whatsapp-rpc] Unsupported platform: ${process.platform}/${process.arch}`);
+    console.error(`[edgymeow] Unsupported platform: ${process.platform}/${process.arch}`);
     process.exit(1);
   }
 
   const { os, goarch, ext } = platformInfo;
-  const binaryName = `whatsapp-rpc-server-${os}-${goarch}${ext}`;
+  const binaryName = `edgymeow-server-${os}-${goarch}${ext}`;
   const downloadUrl = `${BASE_URL}/${binaryName}`;
-  const destPath = resolve(BIN_DIR, `whatsapp-rpc-server${ext}`);
+  const destPath = resolve(BIN_DIR, `edgymeow-server${ext}`);
 
   // Check if binary already exists
   if (existsSync(destPath)) {
-    console.log(`[whatsapp-rpc] Binary already exists: ${destPath}`);
+    console.log(`[edgymeow] Binary already exists: ${destPath}`);
     return;
   }
 
-  console.log(`[whatsapp-rpc] Downloading pre-built binary...`);
+  console.log(`[edgymeow] Downloading pre-built binary...`);
   console.log(`  Version: v${VERSION}`);
   console.log(`  Platform: ${os}/${goarch}`);
 
@@ -149,14 +149,14 @@ async function main() {
     try {
       chmodSync(destPath, 0o755);
     } catch (err) {
-      console.warn(`[whatsapp-rpc] Warning: Could not set executable permission: ${err.message}`);
+      console.warn(`[edgymeow] Warning: Could not set executable permission: ${err.message}`);
     }
   }
 
-  console.log(`[whatsapp-rpc] Binary installed: ${destPath}`);
+  console.log(`[edgymeow] Binary installed: ${destPath}`);
 }
 
 main().catch((err) => {
-  console.error('[whatsapp-rpc] Binary download failed:', err.message);
+  console.error('[edgymeow] Binary download failed:', err.message);
   process.exit(1);
 });

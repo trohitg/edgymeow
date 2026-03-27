@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Static file server for the whatsapp-rpc web client.
+ * Static file server for the edgymeow web client.
  * Serves web/client/ on localhost, with dynamic /config.js for WebSocket port injection.
  *
  * Based on MachinaOs/scripts/serve-client.js pattern.
@@ -18,7 +18,7 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIR = resolve(__dirname, '..', 'web', 'client');
 const PORT = parseInt(process.env.WEB_PORT) || 3001;
-const WS_PORT = parseInt(process.env.WS_PORT || process.env.WHATSAPP_RPC_PORT || process.env.PORT) || 9400;
+const WS_PORT = parseInt(process.env.WS_PORT || process.env.EDGYMEOW_PORT || process.env.PORT) || 9400;
 
 const MIME_TYPES = {
   '.html': 'text/html',

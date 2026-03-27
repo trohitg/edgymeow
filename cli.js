@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const API_PORT = 9400, WEB_PORT = 5000;
-const BIN = process.platform === 'win32' ? 'whatsapp-rpc.exe' : 'whatsapp-rpc';
+const BIN = process.platform === 'win32' ? 'edgymeow.exe' : 'edgymeow';
 
 const log = (m, c = 'blue') => console.log(chalk[c](m));
 const sleep = ms => new Promise(r => setTimeout(r, ms));

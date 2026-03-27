@@ -13,14 +13,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 const DEFAULT_PORT = 9400;
-const BIN = process.platform === 'win32' ? 'whatsapp-rpc-server.exe' : 'whatsapp-rpc-server';
+const BIN = process.platform === 'win32' ? 'edgymeow-server.exe' : 'edgymeow-server';
 const BIN_DIR = join(ROOT, 'bin');
 
 // Get port from environment or default
 const getPort = (opts = {}) => {
   if (opts.port) return parseInt(opts.port, 10);
   if (process.env.PORT) return parseInt(process.env.PORT, 10);
-  if (process.env.WHATSAPP_RPC_PORT) return parseInt(process.env.WHATSAPP_RPC_PORT, 10);
+  if (process.env.EDGYMEOW_PORT) return parseInt(process.env.EDGYMEOW_PORT, 10);
   return DEFAULT_PORT;
 };
 
@@ -163,13 +163,13 @@ async function clean(opts = {}) {
 }
 
 const CROSS_TARGETS = [
-  { goos: 'linux',   goarch: 'amd64', output: 'whatsapp-rpc-server-linux-amd64' },
-  { goos: 'linux',   goarch: 'arm64', output: 'whatsapp-rpc-server-linux-arm64' },
-  { goos: 'darwin',  goarch: 'amd64', output: 'whatsapp-rpc-server-darwin-amd64' },
-  { goos: 'darwin',  goarch: 'arm64', output: 'whatsapp-rpc-server-darwin-arm64' },
-  { goos: 'windows', goarch: 'amd64', output: 'whatsapp-rpc-server-windows-amd64.exe' },
-  { goos: 'android', goarch: 'arm64', output: 'libwhatsapp-rpc-android-arm64.so' },
-  { goos: 'linux',   goarch: 'amd64', output: 'libwhatsapp-rpc-android-x86_64.so', label: 'android-x86_64' },
+  { goos: 'linux',   goarch: 'amd64', output: 'edgymeow-server-linux-amd64' },
+  { goos: 'linux',   goarch: 'arm64', output: 'edgymeow-server-linux-arm64' },
+  { goos: 'darwin',  goarch: 'amd64', output: 'edgymeow-server-darwin-amd64' },
+  { goos: 'darwin',  goarch: 'arm64', output: 'edgymeow-server-darwin-arm64' },
+  { goos: 'windows', goarch: 'amd64', output: 'edgymeow-server-windows-amd64.exe' },
+  { goos: 'android', goarch: 'arm64', output: 'libedgymeow-android-arm64.so' },
+  { goos: 'linux',   goarch: 'amd64', output: 'libedgymeow-android-x86_64.so', label: 'android-x86_64' },
 ];
 
 async function buildCross() {
@@ -220,9 +220,9 @@ async function dev(opts = {}) {
 }
 
 // Global port option for all commands
-const portOption = ['-p, --port <port>', 'API port (default: 9400, or PORT/WHATSAPP_RPC_PORT env var)'];
+const portOption = ['-p, --port <port>', 'API port (default: 9400, or PORT/EDGYMEOW_PORT env)'];
 
-program.name('whatsapp-rpc').version(pkg.version);
+program.name('edgymeow').version(pkg.version);
 program.command('start').description('Start API server').option(...portOption).action(start);
 program.command('stop').description('Stop API server').option(...portOption).action(stop);
 program.command('restart').description('Restart API server').option(...portOption).action(async (opts) => { await stop(opts); await sleep(1000); await start(opts); });
