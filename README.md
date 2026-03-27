@@ -445,7 +445,7 @@ The server pushes events as JSON-RPC notifications (no `id` field):
 
 ## Building from Source
 
-Requires Go 1.21+:
+Requires Go 1.26+:
 
 ```bash
 npm run build
